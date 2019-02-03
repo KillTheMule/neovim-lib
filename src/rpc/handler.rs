@@ -2,7 +2,7 @@ use rmpv::Value;
 use std::sync::mpsc;
 
 pub trait RequestHandler {
-    fn handle_request(&mut self, _name: &str, _args: Vec<Value>) -> Result<Value, Value> {
+    fn handle_request(&mut self, _name: String, _args: Vec<Value>) -> Result<Value, Value> {
         Err(Value::from("Not implemented"))
     }
 }
@@ -28,7 +28,7 @@ impl<H: RequestHandler> Handler for ChannelHandler<H> {
 }
 
 impl<H: RequestHandler> RequestHandler for ChannelHandler<H> {
-    fn handle_request(&mut self, name: &str, args: Vec<Value>) -> Result<Value, Value> {
+    fn handle_request(&mut self, name: String, args: Vec<Value>) -> Result<Value, Value> {
         self.request_handler.handle_request(name, args)
     }
 }
