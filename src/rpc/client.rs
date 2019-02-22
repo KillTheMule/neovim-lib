@@ -257,8 +257,8 @@ where
                 Ok(model::RpcMessage::RpcNotification { method, params }) => {
                     handler.handle_notify(&method, params);
                 }
-                Ok(model::RpcMessage::RpcResponse { .. }) => {
-                    error!("Handler threat does not handle responses!");
+                Ok(_) => {
+                    error!("Handler threat does not handle notifications!");
                 }
                 Err(e) => {
                     debug!("Error receiving request data: {:?}", e);
@@ -266,6 +266,7 @@ where
             }
         });
         let iojoin = thread::spawn(move || loop {
+            error!("Beginning of io-loop!");
             let msg = match model::decode(&mut reader) {
                 Ok(msg) => msg,
                 Err(e) => {
