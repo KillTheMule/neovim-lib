@@ -144,7 +144,7 @@ where
                     }
                 }
                 Err(mpsc::TryRecvError::Disconnected) => {
-                    return Err(Value::from(format!("Channel disconnected ({})", method)))
+                    return Err(Value::from(format!("Channel disconnected ({})", method)));
                 }
                 Ok(val) => return val,
             };
@@ -247,26 +247,26 @@ where
                     method,
                     params,
                 } => {
-                  let wrtr = writer.clone();
-                  let f = move |response: Result<Value, Value>| {
-                    let msg = match response {
-                        Ok(result) => model::RpcMessage::RpcResponse {
-                            msgid,
-                            result,
-                            error: Value::Nil,
-                        },
-                        Err(error) => model::RpcMessage::RpcResponse {
-                            msgid,
-                            result: Value::Nil,
-                            error,
-                        },
+                    let wrtr = writer.clone();
+                    let f = move |response: Result<Value, Value>| {
+                        let msg = match response {
+                            Ok(result) => model::RpcMessage::RpcResponse {
+                                msgid,
+                                result,
+                                error: Value::Nil,
+                            },
+                            Err(error) => model::RpcMessage::RpcResponse {
+                                msgid,
+                                result: Value::Nil,
+                                error,
+                            },
+                        };
+
+                        let target_wrtr = &mut *wrtr.lock().unwrap();
+                        model::encode(target_wrtr, msg)
                     };
 
-                    let target_wrtr = &mut *wrtr.lock().unwrap();
-                    return model::encode(target_wrtr, msg).expect("Error sending RPC response")
-                  };
-
-                  handler.handle_request(&method, params, Box::new(f));
+                    handler.handle_request(&method, params, Box::new(f));
                 }
                 model::RpcMessage::RpcResponse {
                     msgid,

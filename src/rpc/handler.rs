@@ -8,9 +8,8 @@ pub trait RequestHandler {
         &mut self,
         _name: &str,
         _args: Vec<Value>,
-        f: Box<dyn FnOnce(Result<Value, Value>) -> Result<(), Box<Error>> + Send
-        + 'static>
-        ) {
+        _f: Box<dyn Fn(Result<Value, Value>) -> Result<(), Box<Error>> + Send + 'static>,
+    ) {
         unimplemented!()
     }
 }
@@ -40,8 +39,7 @@ impl<H: RequestHandler> RequestHandler for ChannelHandler<H> {
         &mut self,
         name: &str,
         args: Vec<Value>,
-        f: Box<dyn FnOnce(Result<Value, Value>) -> Result<(), Box<Error>> + Send
-        + 'static>
+        f: Box<dyn Fn(Result<Value, Value>) -> Result<(), Box<Error>> + Send + 'static>,
     ) {
         self.request_handler.handle_request(name, args, f)
     }
