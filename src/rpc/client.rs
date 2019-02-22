@@ -34,7 +34,7 @@ where
 {
     reader: Option<BufReader<R>>,
     writer: Arc<Mutex<BufWriter<W>>>,
-    dispatch_guard: Option<(JoinHandle<()>, JoinHandle<()>)>,
+    dispatch_guard: Option<JoinHandle<()>>,
     event_loop_started: bool,
     queue: Queue,
     msgid_counter: u64,
@@ -45,7 +45,7 @@ where
     R: Read + Send + 'static,
     W: Write + Send + 'static,
 {
-    pub fn take_dispatch_guard(&mut self) -> (JoinHandle<()>, JoinHandle<()>) {
+    pub fn take_dispatch_guard(&mut self) -> JoinHandle<()> {
         self.dispatch_guard
             .take()
             .expect("Can only take join handle after running event loop")
@@ -143,7 +143,7 @@ where
                     }
                 }
                 Err(mpsc::TryRecvError::Disconnected) => {
-                    return Err(Value::from(format!("Channel disconnected ({})", method)));
+                    return Err(Value::from(format!("Channel disconnected ({})", method)))
                 }
                 Ok(val) => return val,
             };
@@ -226,19 +226,27 @@ where
         mut reader: BufReader<R>,
         writer: Arc<Mutex<BufWriter<W>>>,
         mut handler: H,
-    ) -> (JoinHandle<()>, JoinHandle<()>)
+    ) -> JoinHandle<()>
     where
         H: Handler + Send + 'static,
     {
-        let (io_to_handlers, handlers_from_io) = mpsc::channel();
-        let rqjoin = thread::spawn(move || loop {
-            match handlers_from_io.recv() {
-                Ok(model::RpcMessage::RpcRequest {
+        thread::spawn(move || loop {
+            let msg = match model::decode(&mut reader) {
+                Ok(msg) => msg,
+                Err(e) => {
+                    error!("Error while reading: {}", e);
+                    Self::send_error_to_callers(&queue, &e);
+                    return;
+                }
+            };
+            debug!("Get message {:?}", msg);
+            match msg {
+                model::RpcMessage::RpcRequest {
                     msgid,
                     method,
                     params,
-                }) => {
-                    let response = match handler.handle_request(method, params) {
+                } => {
+                    let response = match handler.handle_request(&method, params) {
                         Ok(result) => model::RpcMessage::RpcResponse {
                             msgid,
                             result,
@@ -254,31 +262,6 @@ where
                     let writer = &mut *writer.lock().unwrap();
                     model::encode(writer, response).expect("Error sending RPC response");
                 }
-                Ok(model::RpcMessage::RpcNotification { method, params }) => {
-                    handler.handle_notify(&method, params);
-                }
-                Ok(_) => {
-                    error!("Handler threat does not handle notifications!");
-                }
-                Err(e) => {
-                    debug!("Error receiving request data: {:?}", e);
-                }
-            }
-        });
-        let iojoin = thread::spawn(move || loop {
-            error!("Beginning of io-loop!");
-            let msg = match model::decode(&mut reader) {
-                Ok(msg) => msg,
-                Err(e) => {
-                    error!("Error while reading: {}", e);
-                    Self::send_error_to_callers(&queue, &e);
-                    return;
-                }
-            };
-            match msg {
-                m @ model::RpcMessage::RpcRequest { .. } => {
-                    io_to_handlers.send(m).unwrap();
-                }
                 model::RpcMessage::RpcResponse {
                     msgid,
                     result,
@@ -291,13 +274,11 @@ where
                         sender.send(Ok(result));
                     }
                 }
-                m @ model::RpcMessage::RpcNotification { .. } => {
-                    io_to_handlers.send(m).unwrap();
-                    //handler.handle_notify(&method, params);
+                model::RpcMessage::RpcNotification { method, params } => {
+                    handler.handle_notify(&method, params);
                 }
             };
-        });
-        (rqjoin, iojoin)
+        })
     }
 }
 

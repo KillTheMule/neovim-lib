@@ -197,7 +197,7 @@ impl Session {
     /// Wait dispatch thread to finish.
     ///
     /// This can happens in case child process connection is lost for some reason.
-    pub fn take_dispatch_guard(&mut self) -> (JoinHandle<()>, JoinHandle<()>) {
+    pub fn take_dispatch_guard(&mut self) -> JoinHandle<()> {
         match self.client {
             ClientConnection::Child(ref mut client, _) => client.take_dispatch_guard(),
             ClientConnection::Parent(ref mut client) => client.take_dispatch_guard(),
