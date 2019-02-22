@@ -4,6 +4,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
+use std::boxed::Box;
 
 use super::handler::{self, DefaultHandler, Handler, RequestHandler};
 use rmpv::Value;
@@ -246,7 +247,9 @@ where
                     method,
                     params,
                 } => {
-                    let response = match handler.handle_request(&method, params) {
+                  let wrtr = writer.clone();
+                  let f = move |response: Result<Value, Value>| {
+                    let msg = match response {
                         Ok(result) => model::RpcMessage::RpcResponse {
                             msgid,
                             result,
@@ -259,8 +262,11 @@ where
                         },
                     };
 
-                    let writer = &mut *writer.lock().unwrap();
-                    model::encode(writer, response).expect("Error sending RPC response");
+                    let target_wrtr = &mut *wrtr.lock().unwrap();
+                    return model::encode(target_wrtr, msg).expect("Error sending RPC response")
+                  };
+
+                  handler.handle_request(&method, params, Box::new(f));
                 }
                 model::RpcMessage::RpcResponse {
                     msgid,
