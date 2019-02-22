@@ -1,9 +1,17 @@
 use rmpv::Value;
+use std::boxed::Box;
+use std::error::Error;
 use std::sync::mpsc;
 
 pub trait RequestHandler {
-    fn handle_request(&mut self, _name: &str, _args: Vec<Value>) -> Result<Value, Value> {
-        Err(Value::from("Not implemented"))
+    fn handle_request(
+        &mut self,
+        _name: &str,
+        _args: Vec<Value>,
+        _f: Box<dyn FnOnce(Result<Value, Value>) -> Result<(), Box<Error>> + Send
+        + 'static>
+        ) {
+        unimplemented!()
     }
 }
 
@@ -28,8 +36,14 @@ impl<H: RequestHandler> Handler for ChannelHandler<H> {
 }
 
 impl<H: RequestHandler> RequestHandler for ChannelHandler<H> {
-    fn handle_request(&mut self, name: &str, args: Vec<Value>) -> Result<Value, Value> {
-        self.request_handler.handle_request(name, args)
+    fn handle_request(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        f: Box<dyn FnOnce(Result<Value, Value>) -> Result<(), Box<Error>> + Send
+        + 'static>
+    ) {
+        self.request_handler.handle_request(name, args, f)
     }
 }
 
