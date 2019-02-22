@@ -1,3 +1,4 @@
+use std::boxed::Box;
 use std::error::Error;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::sync::{mpsc, Arc, Mutex};
@@ -143,7 +144,7 @@ where
                     }
                 }
                 Err(mpsc::TryRecvError::Disconnected) => {
-                    return Err(Value::from(format!("Channel disconnected ({})", method)))
+                    return Err(Value::from(format!("Channel disconnected ({})", method)));
                 }
                 Ok(val) => return val,
             };
@@ -246,21 +247,26 @@ where
                     method,
                     params,
                 } => {
-                    let response = match handler.handle_request(&method, params) {
-                        Ok(result) => model::RpcMessage::RpcResponse {
-                            msgid,
-                            result,
-                            error: Value::Nil,
-                        },
-                        Err(error) => model::RpcMessage::RpcResponse {
-                            msgid,
-                            result: Value::Nil,
-                            error,
-                        },
+                    let wrtr = writer.clone();
+                    let f = move |response: Result<Value, Value>| {
+                        let msg = match response {
+                            Ok(result) => model::RpcMessage::RpcResponse {
+                                msgid,
+                                result,
+                                error: Value::Nil,
+                            },
+                            Err(error) => model::RpcMessage::RpcResponse {
+                                msgid,
+                                result: Value::Nil,
+                                error,
+                            },
+                        };
+
+                        let target_wrtr = &mut *wrtr.lock().unwrap();
+                        model::encode(target_wrtr, msg)
                     };
 
-                    let writer = &mut *writer.lock().unwrap();
-                    model::encode(writer, response).expect("Error sending RPC response");
+                    handler.handle_request(&method, params, Box::new(f));
                 }
                 model::RpcMessage::RpcResponse {
                     msgid,
