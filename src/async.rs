@@ -10,7 +10,7 @@ pub struct AsyncCall<'a, R: FromVal<Value>> {
     method: String,
     args: Vec<Value>,
     client: &'a mut ClientConnection,
-    cb: Option<Box<FnMut(Result<Value, Value>) + Send + 'static>>,
+    cb: Option<Box<dyn FnMut(Result<Value, Value>) + Send + 'static>>,
     marker: PhantomData<R>,
 }
 

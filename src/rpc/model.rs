@@ -63,7 +63,7 @@ macro_rules! rpc_args {
     }}
 }
 
-pub fn decode<R: Read>(reader: &mut R) -> Result<RpcMessage, Box<Error>> {
+pub fn decode<R: Read>(reader: &mut R) -> Result<RpcMessage, Box<dyn Error>> {
     let mut arr = try_arr!(read_value(reader)?, "Rpc message must be array");
     match try_int!(arr[0], "Can't find message type") {
         0 => {
@@ -102,7 +102,7 @@ pub fn decode<R: Read>(reader: &mut R) -> Result<RpcMessage, Box<Error>> {
     }
 }
 
-pub fn encode<W: Write>(writer: &mut W, msg: RpcMessage) -> Result<(), Box<Error>> {
+pub fn encode<W: Write>(writer: &mut W, msg: RpcMessage) -> Result<(), Box<dyn Error>> {
     match msg {
         RpcMessage::RpcRequest {
             msgid,

@@ -10,7 +10,7 @@ use rmpv::Value;
 
 use super::model;
 
-type Callback = Box<FnMut(Result<Value, Value>) + Send + 'static>;
+type Callback = Box<dyn FnMut(Result<Value, Value>) + Send + 'static>;
 type Queue = Arc<Mutex<Vec<(u64, Sender)>>>;
 
 enum Sender {
@@ -212,7 +212,7 @@ where
         receiver.recv().unwrap()
     }
 
-    fn send_error_to_callers(queue: &Queue, err: &Box<Error>) {
+    fn send_error_to_callers(queue: &Queue, err: &Box<dyn Error>) {
         let mut queue = queue.lock().unwrap();
         queue.drain(0..).for_each(|sender| {
             sender
