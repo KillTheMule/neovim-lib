@@ -1,4 +1,3 @@
-use crate::neovim_api::NeovimApi;
 use rmpv::Value;
 use crate::rpc::*;
 use crate::session::Session;
@@ -178,12 +177,6 @@ impl Neovim {
     /// saving anything.
     pub fn quit_no_save(&mut self) -> Result<(), CallError> {
         self.command("qa!")
-    }
-
-    /// Same as `ui_set_option` but use `UiOption` as argument to check type at compile time
-    pub fn set_option(&mut self, option: UiOption) -> Result<(), CallError> {
-        let name_value = option.to_name_value();
-        self.ui_set_option(name_value.0, name_value.1)
     }
 }
 

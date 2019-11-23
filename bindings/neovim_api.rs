@@ -1,7 +1,7 @@
 // Auto generated {{date}}
 
-use neovim::*;
-use rpc::*;
+use crate::neovim::*;
+use crate::rpc::*;
 
 {% for etype in exttypes %}
 #[derive(PartialEq, Clone, Debug)]
@@ -52,16 +52,9 @@ impl <'a> IntoVal<Value> for &'a {{etype.name}} {
 }
 {% endfor %}
 
-pub trait NeovimApi {
+impl Neovim {
     {% for f in functions if not f.ext %}
-    /// since: {{f.since}}
-    fn {{f.name|replace('nvim_', '')}}(&mut self, {{f.argstring}}) -> Result<{{f.return_type.native_type_ret}}, CallError>;
-    {% endfor %}
-}
-
-impl NeovimApi for Neovim {
-    {% for f in functions if not f.ext %}
-    fn {{f.name|replace('nvim_', '')}}(&mut self, {{f.argstring}}) -> Result<{{f.return_type.native_type_ret}}, CallError> {
+    pub fn {{f.name|replace('nvim_', '')}}(&mut self, {{f.argstring}}) -> Result<{{f.return_type.native_type_ret}}, CallError> {
         self.session.call("{{f.name}}",
                           call_args![{{ f.parameters|map(attribute = "name")|join(", ") }}])
                     .map(map_result)
