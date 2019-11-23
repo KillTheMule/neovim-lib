@@ -12,11 +12,8 @@ use std::path::Path;
 #[cfg(unix)]
 use unix_socket::UnixStream;
 
-use crate::rpc;
 use crate::rpc::handler::{DefaultHandler, Handler, RequestHandler};
 use crate::rpc::Client;
-
-use crate::r#async::AsyncCall;
 
 use rmpv::Value;
 
@@ -183,15 +180,6 @@ impl Session {
             #[cfg(unix)]
             ClientConnection::UnixSocket(ref mut client) => client.call(method, args, self.timeout),
         }
-    }
-
-    /// Create async call will be executed when only after call() function.
-    pub fn call_async<R: rpc::FromVal<Value>>(
-        &mut self,
-        method: &str,
-        args: Vec<Value>,
-    ) -> AsyncCall<R> {
-        AsyncCall::new(&mut self.client, method.to_owned(), args)
     }
 
     /// Wait dispatch thread to finish.
