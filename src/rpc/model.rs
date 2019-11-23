@@ -132,7 +132,7 @@ pub fn encode<W: Write>(writer: &mut W, msg: RpcMessage) -> Result<(), Box<dyn E
 }
 
 pub trait FromVal<T> {
-    fn from_val(T) -> Self;
+    fn from_val(_: T) -> Self;
 }
 
 impl FromVal<Value> for () {

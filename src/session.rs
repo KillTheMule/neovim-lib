@@ -12,11 +12,11 @@ use std::path::Path;
 #[cfg(unix)]
 use unix_socket::UnixStream;
 
-use rpc;
-use rpc::handler::{DefaultHandler, Handler, RequestHandler};
-use rpc::Client;
+use crate::rpc;
+use crate::rpc::handler::{DefaultHandler, Handler, RequestHandler};
+use crate::rpc::Client;
 
-use async::AsyncCall;
+use crate::r#async::AsyncCall;
 
 use rmpv::Value;
 

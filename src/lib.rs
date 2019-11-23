@@ -38,16 +38,16 @@ extern crate unix_socket;
 mod rpc;
 #[macro_use]
 pub mod session;
-pub mod async;
+pub mod r#async;
 pub mod neovim;
 pub mod neovim_api;
 pub mod neovim_api_async;
 
-pub use async::AsyncCall;
-pub use neovim::{CallError, Neovim, UiAttachOptions, UiOption};
-pub use neovim_api::NeovimApi;
-pub use neovim_api_async::NeovimApiAsync;
-pub use session::Session;
+pub use crate::r#async::AsyncCall;
+pub use crate::neovim::{CallError, Neovim, UiAttachOptions, UiOption};
+pub use crate::neovim_api::NeovimApi;
+pub use crate::neovim_api_async::NeovimApiAsync;
+pub use crate::session::Session;
 
 pub use rmpv::{Integer, Utf8String, Value};
-pub use rpc::handler::{Handler, RequestHandler};
+pub use crate::rpc::handler::{Handler, RequestHandler};

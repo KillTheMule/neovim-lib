@@ -1,9 +1,9 @@
 // Auto generated 2019-01-27 23:29:06.038446
 
-use async::AsyncCall;
-use neovim::*;
-use neovim_api::*;
-use rpc::*;
+use crate::r#async::AsyncCall;
+use crate::neovim::*;
+use crate::neovim_api::*;
+use crate::rpc::*;
 
 pub trait NeovimApiAsync {
     /// since: 1

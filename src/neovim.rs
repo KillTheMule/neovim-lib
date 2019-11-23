@@ -1,7 +1,7 @@
-use neovim_api::NeovimApi;
+use crate::neovim_api::NeovimApi;
 use rmpv::Value;
-use rpc::*;
-use session::Session;
+use crate::rpc::*;
+use crate::session::Session;
 use std::error::Error;
 use std::fmt;
 

@@ -2,9 +2,9 @@ use std::marker::PhantomData;
 
 use rmpv::Value;
 
-use neovim;
-use rpc::model::FromVal;
-use session::ClientConnection;
+use crate::neovim;
+use crate::rpc::model::FromVal;
+use crate::session::ClientConnection;
 
 pub struct AsyncCall<'a, R: FromVal<Value>> {
     method: String,

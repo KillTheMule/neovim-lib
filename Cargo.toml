@@ -10,6 +10,7 @@ readme = "README.md"
 categories = ["api-bindings"]
 keywords = ["neovim"]
 exclude = ["generate.bat", "Makefile"]
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "daa84/neovim-lib", branch = "master"  }
