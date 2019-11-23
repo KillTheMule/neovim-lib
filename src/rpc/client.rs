@@ -106,19 +106,6 @@ where
         }
     }
 
-    pub fn call_async(&mut self, method: String, args: Vec<Value>, cb: Option<Callback>) {
-        if !self.event_loop_started {
-            if let Some(mut cb) = cb {
-                cb(Err(Value::from("Event loop not started")));
-            } else {
-                error!("Event loop not started");
-            }
-            return;
-        }
-
-        self.send_msg_async(method, args, cb);
-    }
-
     pub fn call_timeout(
         &mut self,
         method: &str,
