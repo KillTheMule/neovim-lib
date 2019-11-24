@@ -53,9 +53,9 @@ fn can_connect_to_child() {
     endfun""#;
     let mut session = Session::new_child_cmd(
         Command::new(nvimpath)
-            .args(&["-u", "NONE", "--embed", "--headless", "-V3log", "-c", rs, "-c", ":let timer = timer_start(500, 'M')"])
+            .args(&["-u", "NONE", "--embed", "--headless", "-c", rs, "-c", ":let timer = timer_start(500, 'M')"])
             .env("VIMRUNTIME", "/home/pips/Devel/neovim/neovim/runtime")
-            .env("NVIM_LOG_FILE", "/tmp/nvimlog"),
+            .env("NVIM_LOG_FILE", "nvimlog"),
     )
     .unwrap();
     let (handler_to_main, main_from_handler) = sync::channel(2);
