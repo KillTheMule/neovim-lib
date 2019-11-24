@@ -4,7 +4,6 @@ use std::net::TcpStream;
 use std::process::Stdio;
 use std::process::{Child, ChildStdin, ChildStdout, Command};
 use std::result;
-use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -15,6 +14,7 @@ use unix_socket::UnixStream;
 use crate::rpc::handler::{DefaultHandler, Handler, RequestHandler};
 use crate::rpc::Client;
 
+use async_std::sync;
 use rmpv::Value;
 
 /// An active Neovim session.
@@ -114,7 +114,7 @@ impl Session {
     pub fn start_event_loop_channel_handler<H>(
         &mut self,
         request_handler: H,
-    ) -> mpsc::Receiver<(String, Vec<Value>)>
+    ) -> sync::Receiver<(String, Vec<Value>)>
     where
         H: RequestHandler + Send + 'static,
     {
@@ -137,7 +137,7 @@ impl Session {
     }
 
     /// Start processing rpc response and notifications
-    pub fn start_event_loop_channel(&mut self) -> mpsc::Receiver<(String, Vec<Value>)> {
+    pub fn start_event_loop_channel(&mut self) -> sync::Receiver<(String, Vec<Value>)> {
         self.start_event_loop_channel_handler(DefaultHandler())
     }
 
@@ -170,15 +170,15 @@ impl Session {
         }
     }
 
-    /// Sync call. Call can be made only after event loop begin processing
-    pub fn call(&mut self, method: &str, args: Vec<Value>) -> result::Result<Value, Value> {
+    /// Call can be made only after event loop begin processing
+    pub async fn call(&mut self, method: &str, args: Vec<Value>) -> result::Result<Value, Value> {
         match self.client {
-            ClientConnection::Child(ref mut client, _) => client.call(method, args, self.timeout),
-            ClientConnection::Parent(ref mut client) => client.call(method, args, self.timeout),
-            ClientConnection::Tcp(ref mut client) => client.call(method, args, self.timeout),
+            ClientConnection::Child(ref mut client, _) => client.call(method, args).await,
+            ClientConnection::Parent(ref mut client) => client.call(method, args).await,
+            ClientConnection::Tcp(ref mut client) => client.call(method, args).await,
 
             #[cfg(unix)]
-            ClientConnection::UnixSocket(ref mut client) => client.call(method, args, self.timeout),
+            ClientConnection::UnixSocket(ref mut client) => client.call(method, args).await,
         }
     }
 

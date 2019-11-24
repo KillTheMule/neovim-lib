@@ -1,28 +1,26 @@
 use std::error::Error;
 use std::io::{BufReader, BufWriter, Read, Write};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+
+use async_std::{sync, task};
 
 use super::handler::{self, DefaultHandler, Handler, RequestHandler};
 use rmpv::Value;
 
 use super::model;
 
-type Callback = Box<dyn FnMut(Result<Value, Value>) + Send + 'static>;
 type Queue = Arc<Mutex<Vec<(u64, Sender)>>>;
 
 enum Sender {
-    Sync(mpsc::Sender<Result<Value, Value>>),
-    Async(Callback),
+    Sync(sync::Sender<Result<Value, Value>>),
 }
 
 impl Sender {
     fn send(self, res: Result<Value, Value>) {
         match self {
-            Sender::Sync(sender) => sender.send(res).unwrap(),
-            Sender::Async(mut cb) => cb(res),
+            Sender::Sync(sender) => task::block_on(sender.send(res)),
         };
     }
 }
@@ -54,7 +52,7 @@ where
     pub fn start_event_loop_channel_handler<H>(
         &mut self,
         request_handler: H,
-    ) -> mpsc::Receiver<(String, Vec<Value>)>
+    ) -> sync::Receiver<(String, Vec<Value>)>
     where
         H: RequestHandler + Send + 'static,
     {
@@ -106,56 +104,7 @@ where
         }
     }
 
-    pub fn call_timeout(
-        &mut self,
-        method: &str,
-        args: Vec<Value>,
-        dur: Duration,
-    ) -> Result<Value, Value> {
-        if !self.event_loop_started {
-            return Err(Value::from("Event loop not started"));
-        }
-
-        let instant = Instant::now();
-        let delay = Duration::from_millis(1);
-
-        let receiver = self.send_msg(method, args);
-
-        loop {
-            match receiver.try_recv() {
-                Err(mpsc::TryRecvError::Empty) => {
-                    thread::sleep(delay);
-                    if instant.elapsed() >= dur {
-                        return Err(Value::from(format!("Wait timeout ({})", method)));
-                    }
-                }
-                Err(mpsc::TryRecvError::Disconnected) => {
-                    return Err(Value::from(format!("Channel disconnected ({})", method)))
-                }
-                Ok(val) => return val,
-            };
-        }
-    }
-
-    fn send_msg_async(&mut self, method: String, params: Vec<Value>, cb: Option<Callback>) {
-        let msgid = self.msgid_counter;
-        self.msgid_counter += 1;
-
-        let req = model::RpcMessage::RpcRequest {
-            msgid,
-            method,
-            params,
-        };
-
-        if let Some(cb) = cb {
-            self.queue.lock().unwrap().push((msgid, Sender::Async(cb)));
-        }
-
-        let writer = &mut *self.writer.lock().unwrap();
-        model::encode(writer, req).expect("Error sending message");
-    }
-
-    fn send_msg(&mut self, method: &str, args: Vec<Value>) -> mpsc::Receiver<Result<Value, Value>> {
+    fn send_msg(&mut self, method: &str, args: Vec<Value>) -> sync::Receiver<Result<Value, Value>> {
         let msgid = self.msgid_counter;
         self.msgid_counter += 1;
 
@@ -165,7 +114,8 @@ where
             params: args,
         };
 
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = sync::channel(1);
+
         self.queue
             .lock()
             .unwrap()
@@ -177,26 +127,19 @@ where
         receiver
     }
 
-    pub fn call(
-        &mut self,
-        method: &str,
-        args: Vec<Value>,
-        dur: Option<Duration>,
-    ) -> Result<Value, Value> {
-        match dur {
-            Some(dur) => self.call_timeout(method, args, dur),
-            None => self.call_inf(method, args),
-        }
-    }
-
-    pub fn call_inf(&mut self, method: &str, args: Vec<Value>) -> Result<Value, Value> {
+    pub async fn call(&mut self, method: &str, args: Vec<Value>) -> Result<Value, Value> {
         if !self.event_loop_started {
             return Err(Value::from("Event loop not started"));
         }
 
         let receiver = self.send_msg(method, args);
 
-        receiver.recv().unwrap()
+        receiver.recv().await.unwrap_or_else(|| {
+            Err(Value::from(format!(
+                "Method '{}' did not receive a response",
+                method
+            )))
+        })
     }
 
     fn send_error_to_callers(queue: &Queue, err: &Box<dyn Error>) {
@@ -212,59 +155,66 @@ where
         queue: Queue,
         mut reader: BufReader<R>,
         writer: Arc<Mutex<BufWriter<W>>>,
-        mut handler: H,
+        handler: H,
     ) -> JoinHandle<()>
     where
-        H: Handler + Send + 'static,
+        H: Handler + Sync + 'static,
     {
-        thread::spawn(move || loop {
-            let msg = match model::decode(&mut reader) {
-                Ok(msg) => msg,
-                Err(e) => {
-                    error!("Error while reading: {}", e);
-                    Self::send_error_to_callers(&queue, &e);
-                    return;
-                }
-            };
-            debug!("Get message {:?}", msg);
-            match msg {
-                model::RpcMessage::RpcRequest {
-                    msgid,
-                    method,
-                    params,
-                } => {
-                    let response = match handler.handle_request(&method, params) {
-                        Ok(result) => model::RpcMessage::RpcResponse {
-                            msgid,
-                            result,
-                            error: Value::Nil,
-                        },
-                        Err(error) => model::RpcMessage::RpcResponse {
-                            msgid,
-                            result: Value::Nil,
-                            error,
-                        },
-                    };
-
-                    let writer = &mut *writer.lock().unwrap();
-                    model::encode(writer, response).expect("Error sending RPC response");
-                }
-                model::RpcMessage::RpcResponse {
-                    msgid,
-                    result,
-                    error,
-                } => {
-                    let sender = find_sender(&queue, msgid);
-                    if error != Value::Nil {
-                        sender.send(Err(error));
-                    } else {
-                        sender.send(Ok(result));
+        thread::spawn(move || {
+            let handler = Arc::new(handler);
+            loop {
+                let msg = match model::decode(&mut reader) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        error!("Error while reading: {}", e);
+                        Self::send_error_to_callers(&queue, &e);
+                        return;
                     }
-                }
-                model::RpcMessage::RpcNotification { method, params } => {
-                    handler.handle_notify(&method, params);
-                }
-            };
+                };
+                debug!("Get message {:?}", msg);
+                let h1 = handler.clone();
+                let writer = writer.clone();
+                match msg {
+                    model::RpcMessage::RpcRequest {
+                        msgid,
+                        method,
+                        params,
+                    } => {
+                        task::spawn(async move {
+                            let response = match h1.handle_request(method, params).await {
+                                Ok(result) => model::RpcMessage::RpcResponse {
+                                    msgid,
+                                    result,
+                                    error: Value::Nil,
+                                },
+                                Err(error) => model::RpcMessage::RpcResponse {
+                                    msgid,
+                                    result: Value::Nil,
+                                    error,
+                                },
+                            };
+
+                            let writer = &mut *writer.lock().unwrap();
+                            model::encode(writer, response).expect("Error sending RPC response");
+                        });
+                    }
+                    model::RpcMessage::RpcResponse {
+                        msgid,
+                        result,
+                        error,
+                    } => {
+                        let sender = find_sender(&queue, msgid);
+                        if error != Value::Nil {
+                            sender.send(Err(error));
+                        } else {
+                            sender.send(Ok(result));
+                        }
+                    }
+                    model::RpcMessage::RpcNotification { method, params } => {
+                        task::spawn(async move { h1.handle_notify(method, params).await });
+                    }
+                };
+            }
         })
     }
 }
@@ -289,15 +239,15 @@ mod tests {
         let queue = Arc::new(Mutex::new(Vec::new()));
 
         {
-            let (sender, _receiver) = mpsc::channel();
+            let (sender, _receiver) = sync::channel(1);
             queue.lock().unwrap().push((1, Sender::Sync(sender)));
         }
         {
-            let (sender, _receiver) = mpsc::channel();
+            let (sender, _receiver) = sync::channel(1);
             queue.lock().unwrap().push((2, Sender::Sync(sender)));
         }
         {
-            let (sender, _receiver) = mpsc::channel();
+            let (sender, _receiver) = sync::channel(1);
             queue.lock().unwrap().push((3, Sender::Sync(sender)));
         }
 

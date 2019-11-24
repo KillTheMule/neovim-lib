@@ -1,14 +1,17 @@
 use rmpv::Value;
-use std::sync::mpsc;
+use async_std::sync;
+use async_trait::async_trait;
 
-pub trait RequestHandler {
-    fn handle_request(&mut self, _name: &str, _args: Vec<Value>) -> Result<Value, Value> {
+#[async_trait]
+pub trait RequestHandler: Sync + Send {
+    async fn handle_request(&self, _name: String, _args: Vec<Value>) -> Result<Value, Value> {
         Err(Value::from("Not implemented"))
     }
 }
 
+#[async_trait]
 pub trait Handler: RequestHandler {
-    fn handle_notify(&mut self, _name: &str, _args: Vec<Value>) {}
+    async fn handle_notify(&self, _name: String, _args: Vec<Value>) {}
 }
 
 pub struct DefaultHandler();
@@ -17,25 +20,27 @@ impl RequestHandler for DefaultHandler {}
 impl Handler for DefaultHandler {}
 
 pub struct ChannelHandler<H: RequestHandler> {
-    sender: mpsc::Sender<(String, Vec<Value>)>,
+    sender: sync::Sender<(String, Vec<Value>)>,
     request_handler: H,
 }
 
+#[async_trait]
 impl<H: RequestHandler> Handler for ChannelHandler<H> {
-    fn handle_notify(&mut self, name: &str, args: Vec<Value>) {
-        self.sender.send((name.to_owned(), args)).unwrap()
+    async fn handle_notify(&self, name: String, args: Vec<Value>) {
+        self.sender.send((name.to_owned(), args)).await
     }
 }
 
+#[async_trait]
 impl<H: RequestHandler> RequestHandler for ChannelHandler<H> {
-    fn handle_request(&mut self, name: &str, args: Vec<Value>) -> Result<Value, Value> {
-        self.request_handler.handle_request(name, args)
+    async fn handle_request(&self, name: String, args: Vec<Value>) -> Result<Value, Value> {
+      (&*self).request_handler.handle_request(name, args).await
     }
 }
 
 impl<H: RequestHandler> ChannelHandler<H> {
-    pub fn new(request_handler: H) -> (Self, mpsc::Receiver<(String, Vec<Value>)>) {
-        let (sender, receiver) = mpsc::channel();
+    pub fn new(request_handler: H) -> (Self, sync::Receiver<(String, Vec<Value>)>) {
+        let (sender, receiver) = sync::channel(10); //TODO: Is 10 a good number?
         (
             ChannelHandler {
                 request_handler,
@@ -48,6 +53,6 @@ impl<H: RequestHandler> ChannelHandler<H> {
 
 pub fn channel<H: RequestHandler>(
     request_handler: H,
-) -> (ChannelHandler<H>, mpsc::Receiver<(String, Vec<Value>)>) {
+) -> (ChannelHandler<H>, sync::Receiver<(String, Vec<Value>)>) {
     ChannelHandler::new(request_handler)
 }

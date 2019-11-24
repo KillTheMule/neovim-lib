@@ -3,6 +3,7 @@ use crate::rpc::*;
 use crate::session::Session;
 use std::error::Error;
 use std::fmt;
+use async_std::task;
 
 pub struct Neovim {
     pub session: Session,
@@ -164,19 +165,21 @@ impl Neovim {
         height: i64,
         opts: &UiAttachOptions,
     ) -> Result<(), CallError> {
-        self.session
+        task::block_on(self.session
             .call(
                 "nvim_ui_attach",
                 call_args!(width, height, opts.to_value_map()),
-            ).map_err(map_generic_error)
-            .map(|_| ())
+            )
+        )
+        .map_err(map_generic_error)
+        .map(|_| ())
     }
 
     /// Send a quit command to Nvim.
     /// The quit command is 'qa!' which will make Nvim quit without
     /// saving anything.
     pub fn quit_no_save(&mut self) -> Result<(), CallError> {
-        self.command("qa!")
+        task::block_on(self.command("qa!"))
     }
 }
 
