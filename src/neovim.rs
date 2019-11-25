@@ -26,7 +26,7 @@ use rmpv::Value;
 
 /// An active Neovim session.
 pub struct Neovim {
-  client: ClientConnection,
+  connection: ClientConnection,
   timeout: Option<Duration>,
 }
 
@@ -48,7 +48,7 @@ impl Neovim {
     let stream = TcpStream::connect(addr)?;
     let read = stream.try_clone()?;
     Ok(Neovim {
-      client: ClientConnection::Tcp(Client::new(stream, read)),
+      connection: ClientConnection::Tcp(Client::new(stream, read)),
       timeout: Some(Duration::new(5, 0)),
     })
   }
@@ -59,7 +59,7 @@ impl Neovim {
     let stream = UnixStream::connect(path)?;
     let read = stream.try_clone()?;
     Ok(Neovim {
-      client: ClientConnection::UnixSocket(Client::new(stream, read)),
+      connection: ClientConnection::UnixSocket(Client::new(stream, read)),
       timeout: Some(Duration::new(5, 0)),
     })
   }
@@ -93,7 +93,7 @@ impl Neovim {
       .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdin"))?;
 
     Ok(Neovim {
-      client: ClientConnection::Child(Client::new(stdout, stdin), child),
+      connection: ClientConnection::Child(Client::new(stdout, stdin), child),
       timeout: Some(Duration::new(5, 0)),
     })
   }
@@ -101,7 +101,7 @@ impl Neovim {
   /// Connect to a Neovim instance that spawned this process over stdin/stdout.
   pub fn new_parent() -> io::Result<Neovim> {
     Ok(Neovim {
-      client: ClientConnection::Parent(Client::new(io::stdin(), io::stdout())),
+      connection: ClientConnection::Parent(Client::new(io::stdin(), io::stdout())),
       timeout: Some(Duration::new(5, 0)),
     })
   }
@@ -123,7 +123,7 @@ impl Neovim {
   where
     H: RequestHandler + Send + 'static,
   {
-    match self.client {
+    match self.connection {
       ClientConnection::Child(ref mut client, _) => {
         client.start_event_loop_channel_handler(request_handler)
       }
@@ -153,7 +153,7 @@ impl Neovim {
   where
     H: Handler + Send + 'static,
   {
-    match self.client {
+    match self.connection {
       ClientConnection::Child(ref mut client, _) => {
         client.start_event_loop_handler(handler)
       }
@@ -173,7 +173,7 @@ impl Neovim {
 
   /// Start processing rpc response and notifications
   pub fn start_event_loop(&mut self) {
-    match self.client {
+    match self.connection {
       ClientConnection::Child(ref mut client, _) => client.start_event_loop(),
       ClientConnection::Parent(ref mut client) => client.start_event_loop(),
       ClientConnection::Tcp(ref mut client) => client.start_event_loop(),
@@ -189,7 +189,7 @@ impl Neovim {
     method: &str,
     args: Vec<Value>,
   ) -> result::Result<Value, Value> {
-    match self.client {
+    match self.connection {
       ClientConnection::Child(ref mut client, _) => {
         client.call(method, args).await
       }
@@ -209,7 +209,7 @@ impl Neovim {
   ///
   /// This can happens in case child process connection is lost for some reason.
   pub fn take_dispatch_guard(&mut self) -> JoinHandle<()> {
-    match self.client {
+    match self.connection {
       ClientConnection::Child(ref mut client, _) => {
         client.take_dispatch_guard()
       }
