@@ -25,7 +25,6 @@
 //! let receiver = nvim.start_event_loop_channel();
 //!
 //! let (event_name, args) = task::block_on(receiver.recv()).unwrap();
-//!
 //! ```
 extern crate rmp;
 extern crate rmpv;
@@ -38,13 +37,15 @@ extern crate unix_socket;
 mod rpc;
 #[macro_use]
 pub mod neovim;
+pub mod callerror;
 pub mod neovim_api;
 pub mod uioptions;
-pub mod callerror;
 
-pub use crate::neovim::Neovim;
-pub use crate::uioptions::{UiAttachOptions, UiOption};
-pub use crate::callerror::CallError;
+pub use crate::{
+  callerror::CallError,
+  neovim::Neovim,
+  uioptions::{UiAttachOptions, UiOption},
+};
 
-pub use rmpv::{Integer, Utf8String, Value};
 pub use crate::rpc::handler::{Handler, RequestHandler};
+pub use rmpv::{Integer, Utf8String, Value};
