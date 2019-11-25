@@ -42,9 +42,13 @@ mod rpc;
 pub mod session;
 pub mod neovim;
 pub mod neovim_api;
+pub mod uioptions;
+pub mod callerror;
 
-pub use crate::neovim::{CallError, Neovim, UiAttachOptions, UiOption};
+pub use crate::neovim::Neovim;
+pub use crate::uioptions::{UiAttachOptions, UiOption};
 pub use crate::session::Session;
+pub use crate::callerror::CallError;
 
 pub use rmpv::{Integer, Utf8String, Value};
 pub use crate::rpc::handler::{Handler, RequestHandler};

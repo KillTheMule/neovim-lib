@@ -2,6 +2,11 @@
 
 use crate::neovim::*;
 use crate::rpc::*;
+use crate::callerror::{CallError, map_generic_error};
+
+fn map_result<T: FromVal<Value>>(val: Value) -> T {
+    T::from_val(val)
+}
 
 {% for etype in exttypes %}
 #[derive(PartialEq, Clone, Debug)]
