@@ -2,7 +2,6 @@ extern crate neovim_lib;
 extern crate rmp;
 extern crate tempdir;
 
-use neovim_lib::session::Session;
 use neovim_lib::neovim::Neovim;
 use async_std::task;
 
@@ -14,33 +13,30 @@ use tempdir::TempDir;
 #[ignore]
 #[test]
 fn start_stop_test() {
-    let mut session = if cfg!(target_os = "windows") {
-        Session::new_child_path("E:\\Neovim\\bin\\nvim.exe").unwrap()
+    let mut nvim = if cfg!(target_os = "windows") {
+        Neovim::new_child_path("E:\\Neovim\\bin\\nvim.exe").unwrap()
     } else {
-        Session::new_child().unwrap()
+        Neovim::new_child().unwrap()
     };
 
-    session.start_event_loop();
+    nvim.start_event_loop();
 
-    let mut nvim = Neovim::new(session);
     println!("{:?}", task::block_on(nvim.get_api_info()).unwrap());
 }
 
 #[ignore]
 #[test]
 fn remote_test() {
-    let mut session = Session::new_tcp("127.0.0.1:6666").unwrap();
-    session.start_event_loop();
-    let mut nvim = Neovim::new(session);
+    let mut nvim = Neovim::new_tcp("127.0.0.1:6666").unwrap();
+    nvim.start_event_loop();
     task::block_on(nvim.command("echo \"Test\"")).unwrap();
 }
 
 #[ignore]
 #[test]
 fn edit_test() {
-    let mut session = Session::new_tcp("127.0.0.1:6666").unwrap();
-    session.start_event_loop();
-    let mut nvim = Neovim::new(session);
+    let mut nvim = Neovim::new_tcp("127.0.0.1:6666").unwrap();
+    nvim.start_event_loop();
     let buffers = task::block_on(nvim.list_bufs()).unwrap();
     task::block_on(buffers[0].set_lines(&mut nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
     task::block_on(nvim.command("vsplit")).unwrap();
@@ -84,13 +80,11 @@ fn can_connect_via_unix_socket() {
     }
 
 
-    let mut session = Session::new_unix_socket(&socket_path)
+    let mut nvim = Neovim::new_unix_socket(&socket_path)
         .expect(&format!("Unable to connect to neovim's unix socket at {:?}",
                          &socket_path));
 
-    session.start_event_loop();
-
-    let mut nvim = Neovim::new(session);
+    nvim.start_event_loop();
 
     let servername = task::block_on(nvim.get_vvar("servername"))
         .expect("Error retrieving servername from neovim over unix socket");

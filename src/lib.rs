@@ -4,12 +4,11 @@
 //! # Examples
 //! ## Simple use case
 //! ```no_run
-//! use neovim_lib::{Neovim, Session};
+//! use neovim_lib::Neovim;
 //! use async_std::task;
 //!
-//! let mut session = Session::new_tcp("127.0.0.1:6666").unwrap();
-//! session.start_event_loop();
-//! let mut nvim = Neovim::new(session);
+//! let mut nvim = Neovim::new_tcp("127.0.0.1:6666").unwrap();
+//! nvim.start_event_loop();
 //!
 //! let buffers = task::block_on(nvim.list_bufs()).unwrap();
 //! task::block_on(buffers[0].set_lines(&mut nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
@@ -20,11 +19,10 @@
 //! ## Process notify events from neovim
 //!
 //! ```no_run
-//! use neovim_lib::{Neovim, Session};
+//! use neovim_lib::Neovim;
 //! use async_std::task;
-//! let mut session = Session::new_tcp("127.0.0.1:6666").unwrap();
-//! let receiver = session.start_event_loop_channel();
-//! let mut nvim = Neovim::new(session);
+//! let mut nvim = Neovim::new_tcp("127.0.0.1:6666").unwrap();
+//! let receiver = nvim.start_event_loop_channel();
 //!
 //! let (event_name, args) = task::block_on(receiver.recv()).unwrap();
 //!
@@ -39,7 +37,6 @@ extern crate unix_socket;
 
 mod rpc;
 #[macro_use]
-pub mod session;
 pub mod neovim;
 pub mod neovim_api;
 pub mod uioptions;
@@ -47,7 +44,6 @@ pub mod callerror;
 
 pub use crate::neovim::Neovim;
 pub use crate::uioptions::{UiAttachOptions, UiOption};
-pub use crate::session::Session;
 pub use crate::callerror::CallError;
 
 pub use rmpv::{Integer, Utf8String, Value};

@@ -4,7 +4,6 @@ extern crate rmp;
 use async_std::{sync, task};
 use async_trait::async_trait;
 use neovim_lib::neovim::Neovim;
-use neovim_lib::session::Session;
 use neovim_lib::{Handler, RequestHandler};
 use rmpv::Value;
 
@@ -51,7 +50,7 @@ fn can_connect_to_child() {
     let rs = r#"exe ":fun M(timer) 
       call rpcrequest(1, 'req', 'y') 
     endfun""#;
-    let mut session = Session::new_child_cmd(
+    let mut nvim = Neovim::new_child_cmd(
         Command::new(nvimpath)
             .args(&["-u", "NONE", "--embed", "--headless", "-c", rs, "-c", ":let timer = timer_start(500, 'M')"])
             .env("VIMRUNTIME", "/home/pips/Devel/neovim/neovim/runtime")
@@ -64,11 +63,9 @@ fn can_connect_to_child() {
         to_main: handler_to_main,
         from_main: handler_from_main,
     };
-    session.start_event_loop_handler(handler);
+    nvim.start_event_loop_handler(handler);
 
     task::block_on(async move {
-      let mut nvim = Neovim::new(session);
-
       while let Some(v) = main_from_handler.recv().await {
           eprintln!("Req {}", v.as_str().unwrap());
           let mut x:String = nvim.get_vvar("servername").await.unwrap().as_str().unwrap().into();
