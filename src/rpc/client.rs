@@ -1,6 +1,7 @@
 use std::{
   error::Error,
   io::{BufReader, BufWriter, Read, Write},
+  marker::PhantomData,
   sync::{Arc, Mutex},
   thread,
   thread::JoinHandle,
@@ -32,11 +33,11 @@ where
   R: Read + Send + 'static,
   W: Write + Send + 'static,
 {
-  pub(crate) reader: Option<BufReader<R>>,
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
   pub(crate) msgid_counter: u64,
   pub dispatch_guard: Option<JoinHandle<()>>,
+  _p: PhantomData<R>,
 }
 
 impl<R, W> Client<R, W>
@@ -50,14 +51,15 @@ where
   {
     let queue = Arc::new(Mutex::new(Vec::new()));
     let mut client = Client {
-      reader: Some(BufReader::new(reader)),
       writer: Arc::new(Mutex::new(BufWriter::new(writer))),
       msgid_counter: 0,
       queue: queue,
       dispatch_guard: None,
+      _p: PhantomData,
     };
 
-    let j = client.dispatch_thread(handler);
+    let reader = BufReader::new(reader);
+    let j = client.dispatch_thread(handler, reader);
     client.dispatch_guard = Some(j);
     client
   }
@@ -114,12 +116,15 @@ where
     });
   }
 
-  pub(crate) fn dispatch_thread<H>(&mut self, handler: H) -> JoinHandle<()>
+  pub(crate) fn dispatch_thread<H>(
+    &mut self,
+    handler: H,
+    mut reader: BufReader<R>,
+  ) -> JoinHandle<()>
   where
     H: Handler + Sync + 'static,
   {
     let queue = self.queue.clone();
-    let mut reader = self.reader.take().unwrap();
     let writer = self.writer.clone();
 
     thread::spawn(move || {
