@@ -8,14 +8,14 @@ use std::{
 
 use async_std::{sync, task};
 
-use super::handler::{self, DefaultHandler, Handler, RequestHandler};
+use super::handler::Handler;
 use rmpv::Value;
 
 use super::model;
 
 type Queue = Arc<Mutex<Vec<(u64, Sender)>>>;
 
-enum Sender {
+pub enum Sender {
   Sync(sync::Sender<Result<Value, Value>>),
 }
 
@@ -32,12 +32,11 @@ where
   R: Read + Send + 'static,
   W: Write + Send + 'static,
 {
-  reader: Option<BufReader<R>>,
-  writer: Arc<Mutex<BufWriter<W>>>,
-  dispatch_guard: Option<JoinHandle<()>>,
-  event_loop_started: bool,
-  queue: Queue,
-  msgid_counter: u64,
+  pub(crate) reader: Option<BufReader<R>>,
+  pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
+  pub(crate) queue: Queue,
+  pub(crate) msgid_counter: u64,
+  pub dispatch_guard: Option<JoinHandle<()>>,
 }
 
 impl<R, W> Client<R, W>
@@ -45,66 +44,22 @@ where
   R: Read + Send + 'static,
   W: Write + Send + 'static,
 {
-  pub fn take_dispatch_guard(&mut self) -> JoinHandle<()> {
-    self
-      .dispatch_guard
-      .take()
-      .expect("Can only take join handle after running event loop")
-  }
-
-  pub fn start_event_loop_channel_handler<H>(
-    &mut self,
-    request_handler: H,
-  ) -> sync::Receiver<(String, Vec<Value>)>
-  where
-    H: RequestHandler + Send + 'static,
-  {
-    let (handler, reciever) = handler::channel(request_handler);
-
-    self.dispatch_guard = Some(Self::dispatch_thread(
-      self.queue.clone(),
-      self.reader.take().unwrap(),
-      self.writer.clone(),
-      handler,
-    ));
-    self.event_loop_started = true;
-
-    reciever
-  }
-
-  pub fn start_event_loop_handler<H>(&mut self, handler: H)
+  pub fn new<H>(reader: R, writer: W, handler: H) -> Self
   where
     H: Handler + Send + 'static,
   {
-    self.dispatch_guard = Some(Self::dispatch_thread(
-      self.queue.clone(),
-      self.reader.take().unwrap(),
-      self.writer.clone(),
-      handler,
-    ));
-    self.event_loop_started = true;
-  }
-
-  pub fn start_event_loop(&mut self) {
-    self.dispatch_guard = Some(Self::dispatch_thread(
-      self.queue.clone(),
-      self.reader.take().unwrap(),
-      self.writer.clone(),
-      DefaultHandler(),
-    ));
-    self.event_loop_started = true;
-  }
-
-  pub fn new(reader: R, writer: W) -> Self {
     let queue = Arc::new(Mutex::new(Vec::new()));
-    Client {
+    let mut client = Client {
       reader: Some(BufReader::new(reader)),
       writer: Arc::new(Mutex::new(BufWriter::new(writer))),
       msgid_counter: 0,
-      queue: queue.clone(),
+      queue: queue,
       dispatch_guard: None,
-      event_loop_started: false,
-    }
+    };
+
+    let j = client.dispatch_thread(handler);
+    client.dispatch_guard = Some(j);
+    client
   }
 
   fn send_msg(
@@ -140,10 +95,6 @@ where
     method: &str,
     args: Vec<Value>,
   ) -> Result<Value, Value> {
-    if !self.event_loop_started {
-      return Err(Value::from("Event loop not started"));
-    }
-
     let receiver = self.send_msg(method, args);
 
     receiver.recv().await.unwrap_or_else(|| {
@@ -163,15 +114,14 @@ where
     });
   }
 
-  fn dispatch_thread<H>(
-    queue: Queue,
-    mut reader: BufReader<R>,
-    writer: Arc<Mutex<BufWriter<W>>>,
-    handler: H,
-  ) -> JoinHandle<()>
+  pub(crate) fn dispatch_thread<H>(&mut self, handler: H) -> JoinHandle<()>
   where
     H: Handler + Sync + 'static,
   {
+    let queue = self.queue.clone();
+    let mut reader = self.reader.take().unwrap();
+    let writer = self.writer.clone();
+
     thread::spawn(move || {
       let handler = Arc::new(handler);
       loop {

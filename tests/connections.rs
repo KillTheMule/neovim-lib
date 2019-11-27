@@ -53,6 +53,14 @@ fn can_connect_to_child() {
   let rs = r#"exe ":fun M(timer) 
       call rpcrequest(1, 'req', 'y') 
     endfun""#;
+
+  let (handler_to_main, main_from_handler) = sync::channel(2);
+  let (main_to_handler, handler_from_main) = sync::channel(2);
+  let handler = NH {
+    to_main: handler_to_main,
+    from_main: handler_from_main,
+  };
+
   let mut nvim = Neovim::new_child_cmd(
     Command::new(nvimpath)
       .args(&[
@@ -67,15 +75,9 @@ fn can_connect_to_child() {
       ])
       .env("VIMRUNTIME", "/home/pips/Devel/neovim/neovim/runtime")
       .env("NVIM_LOG_FILE", "nvimlog"),
+    handler,
   )
   .unwrap();
-  let (handler_to_main, main_from_handler) = sync::channel(2);
-  let (main_to_handler, handler_from_main) = sync::channel(2);
-  let handler = NH {
-    to_main: handler_to_main,
-    from_main: handler_from_main,
-  };
-  nvim.start_event_loop_handler(handler);
 
   task::block_on(async move {
     while let Some(v) = main_from_handler.recv().await {

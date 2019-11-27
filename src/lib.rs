@@ -4,11 +4,11 @@
 //! # Examples
 //! ## Simple use case
 //! ```no_run
-//! use neovim_lib::Neovim;
+//! use neovim_lib::{Neovim, DefaultHandler};
 //! use async_std::task;
 //!
-//! let mut nvim = Neovim::new_tcp("127.0.0.1:6666").unwrap();
-//! nvim.start_event_loop();
+//! let mut handler = DefaultHandler{};
+//! let mut nvim = Neovim::new_tcp("127.0.0.1:6666", handler).unwrap();
 //!
 //! let buffers = task::block_on(nvim.list_bufs()).unwrap();
 //! task::block_on(buffers[0].set_lines(&mut nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
@@ -19,10 +19,12 @@
 //! ## Process notify events from neovim
 //!
 //! ```no_run
-//! use neovim_lib::Neovim;
+//! use neovim_lib::{Neovim, ChannelHandler, DefaultHandler};
 //! use async_std::task;
-//! let mut nvim = Neovim::new_tcp("127.0.0.1:6666").unwrap();
-//! let receiver = nvim.start_event_loop_channel();
+//!
+//! let mut handler = DefaultHandler{};
+//! let (mut chandler, mut receiver) = ChannelHandler::new(handler);
+//! let mut nvim = Neovim::new_tcp("127.0.0.1:6666", chandler).unwrap();
 //!
 //! let (event_name, args) = task::block_on(receiver.recv()).unwrap();
 //! ```
@@ -44,6 +46,7 @@ pub mod uioptions;
 pub use crate::{
   callerror::CallError,
   neovim::Neovim,
+  rpc::handler::{ChannelHandler, DefaultHandler},
   uioptions::{UiAttachOptions, UiOption},
 };
 

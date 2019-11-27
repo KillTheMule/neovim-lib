@@ -60,9 +60,3 @@ impl<H: RequestHandler> ChannelHandler<H> {
     )
   }
 }
-
-pub fn channel<H: RequestHandler>(
-  request_handler: H,
-) -> (ChannelHandler<H>, sync::Receiver<(String, Vec<Value>)>) {
-  ChannelHandler::new(request_handler)
-}

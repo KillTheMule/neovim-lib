@@ -1,33 +1,28 @@
 use std::{
   io::{self, Error, ErrorKind, Stdin, Stdout},
   net::TcpStream,
+  path::Path,
   process::{Child, ChildStdin, ChildStdout, Command, Stdio},
   result,
-  thread::JoinHandle,
   time::Duration,
 };
 
-use std::path::Path;
 #[cfg(unix)]
 use unix_socket::UnixStream;
 
 use crate::{
   callerror::{map_generic_error, CallError},
-  rpc::{
-    handler::{DefaultHandler, Handler, RequestHandler},
-    model::IntoVal,
-    Client,
-  },
+  rpc::{handler::Handler, model::IntoVal, Client},
   uioptions::UiAttachOptions,
 };
 
-use async_std::{sync, task};
+use async_std::task;
 use rmpv::Value;
 
 /// An active Neovim session.
 pub struct Neovim {
-  connection: ClientConnection,
-  timeout: Option<Duration>,
+  pub connection: ClientConnection,
+  pub timeout: Option<Duration>,
 }
 
 macro_rules! call_args {
@@ -44,44 +39,72 @@ macro_rules! call_args {
 
 impl Neovim {
   /// Connect to nvim instance via tcp
-  pub fn new_tcp(addr: &str) -> io::Result<Neovim> {
+  pub fn new_tcp<H>(addr: &str, handler: H) -> io::Result<Neovim>
+  where
+    H: Handler + Send + 'static,
+  {
     let stream = TcpStream::connect(addr)?;
     let read = stream.try_clone()?;
+    let client = Client::new(stream, read, handler);
+    let connection = ClientConnection::Tcp(client);
+
     Ok(Neovim {
-      connection: ClientConnection::Tcp(Client::new(stream, read)),
+      connection,
       timeout: Some(Duration::new(5, 0)),
     })
   }
 
   #[cfg(unix)]
   /// Connect to nvim instance via unix socket
-  pub fn new_unix_socket<P: AsRef<Path>>(path: P) -> io::Result<Neovim> {
+  pub fn new_unix_socket<H, P: AsRef<Path>>(
+    path: P,
+    handler: H,
+  ) -> io::Result<Neovim>
+  where
+    H: Handler + Send + 'static,
+  {
     let stream = UnixStream::connect(path)?;
     let read = stream.try_clone()?;
+
+    let client = Client::new(stream, read, handler);
+    let connection = ClientConnection::UnixSocket(client);
+
     Ok(Neovim {
-      connection: ClientConnection::UnixSocket(Client::new(stream, read)),
+      connection,
       timeout: Some(Duration::new(5, 0)),
     })
   }
 
   /// Connect to a Neovim instance by spawning a new one.
-  pub fn new_child() -> io::Result<Neovim> {
+  pub fn new_child<H>(handler: H) -> io::Result<Neovim>
+  where
+    H: Handler + Send + 'static,
+  {
     if cfg!(target_os = "windows") {
-      Self::new_child_path("nvim.exe")
+      Self::new_child_path("nvim.exe", handler)
     } else {
-      Self::new_child_path("nvim")
+      Self::new_child_path("nvim", handler)
     }
   }
 
   /// Connect to a Neovim instance by spawning a new one
-  pub fn new_child_path<S: AsRef<Path>>(program: S) -> io::Result<Neovim> {
-    Self::new_child_cmd(Command::new(program.as_ref()).arg("--embed"))
+  pub fn new_child_path<H, S: AsRef<Path>>(
+    program: S,
+    handler: H,
+  ) -> io::Result<Neovim>
+  where
+    H: Handler + Send + 'static,
+  {
+    Self::new_child_cmd(Command::new(program.as_ref()).arg("--embed"), handler)
   }
 
   /// Connect to a Neovim instance by spawning a new one
   ///
   /// stdin/stdout settings will be rewrited to `Stdio::piped()`
-  pub fn new_child_cmd(cmd: &mut Command) -> io::Result<Neovim> {
+  pub fn new_child_cmd<H>(cmd: &mut Command, handler: H) -> io::Result<Neovim>
+  where
+    H: Handler + Send + 'static,
+  {
     let mut child = cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
     let stdout = child
       .stdout
@@ -92,16 +115,25 @@ impl Neovim {
       .take()
       .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdin"))?;
 
+    let client = Client::new(stdout, stdin, handler);
+    let connection = ClientConnection::Child(client, child);
+
     Ok(Neovim {
-      connection: ClientConnection::Child(Client::new(stdout, stdin), child),
+      connection,
       timeout: Some(Duration::new(5, 0)),
     })
   }
 
   /// Connect to a Neovim instance that spawned this process over stdin/stdout.
-  pub fn new_parent() -> io::Result<Neovim> {
+  pub fn new_parent<H>(handler: H) -> io::Result<Neovim>
+  where
+    H: Handler + Send + 'static,
+  {
+    let client = Client::new(io::stdin(), io::stdout(), handler);
+    let connection = ClientConnection::Parent(client);
+
     Ok(Neovim {
-      connection: ClientConnection::Parent(Client::new(io::stdin(), io::stdout())),
+      connection,
       timeout: Some(Duration::new(5, 0)),
     })
   }
@@ -113,74 +145,6 @@ impl Neovim {
 
   pub fn set_infinity_timeout(&mut self) {
     self.timeout = None;
-  }
-
-  /// Start processing rpc response and notifications
-  pub fn start_event_loop_channel_handler<H>(
-    &mut self,
-    request_handler: H,
-  ) -> sync::Receiver<(String, Vec<Value>)>
-  where
-    H: RequestHandler + Send + 'static,
-  {
-    match self.connection {
-      ClientConnection::Child(ref mut client, _) => {
-        client.start_event_loop_channel_handler(request_handler)
-      }
-      ClientConnection::Parent(ref mut client) => {
-        client.start_event_loop_channel_handler(request_handler)
-      }
-      ClientConnection::Tcp(ref mut client) => {
-        client.start_event_loop_channel_handler(request_handler)
-      }
-
-      #[cfg(unix)]
-      ClientConnection::UnixSocket(ref mut client) => {
-        client.start_event_loop_channel_handler(request_handler)
-      }
-    }
-  }
-
-  /// Start processing rpc response and notifications
-  pub fn start_event_loop_channel(
-    &mut self,
-  ) -> sync::Receiver<(String, Vec<Value>)> {
-    self.start_event_loop_channel_handler(DefaultHandler())
-  }
-
-  /// Start processing rpc response and notifications
-  pub fn start_event_loop_handler<H>(&mut self, handler: H)
-  where
-    H: Handler + Send + 'static,
-  {
-    match self.connection {
-      ClientConnection::Child(ref mut client, _) => {
-        client.start_event_loop_handler(handler)
-      }
-      ClientConnection::Parent(ref mut client) => {
-        client.start_event_loop_handler(handler)
-      }
-      ClientConnection::Tcp(ref mut client) => {
-        client.start_event_loop_handler(handler)
-      }
-
-      #[cfg(unix)]
-      ClientConnection::UnixSocket(ref mut client) => {
-        client.start_event_loop_handler(handler)
-      }
-    }
-  }
-
-  /// Start processing rpc response and notifications
-  pub fn start_event_loop(&mut self) {
-    match self.connection {
-      ClientConnection::Child(ref mut client, _) => client.start_event_loop(),
-      ClientConnection::Parent(ref mut client) => client.start_event_loop(),
-      ClientConnection::Tcp(ref mut client) => client.start_event_loop(),
-
-      #[cfg(unix)]
-      ClientConnection::UnixSocket(ref mut client) => client.start_event_loop(),
-    }
   }
 
   /// Call can be made only after event loop begin processing
@@ -201,24 +165,6 @@ impl Neovim {
       #[cfg(unix)]
       ClientConnection::UnixSocket(ref mut client) => {
         client.call(method, args).await
-      }
-    }
-  }
-
-  /// Wait dispatch thread to finish.
-  ///
-  /// This can happens in case child process connection is lost for some reason.
-  pub fn take_dispatch_guard(&mut self) -> JoinHandle<()> {
-    match self.connection {
-      ClientConnection::Child(ref mut client, _) => {
-        client.take_dispatch_guard()
-      }
-      ClientConnection::Parent(ref mut client) => client.take_dispatch_guard(),
-      ClientConnection::Tcp(ref mut client) => client.take_dispatch_guard(),
-
-      #[cfg(unix)]
-      ClientConnection::UnixSocket(ref mut client) => {
-        client.take_dispatch_guard()
       }
     }
   }
