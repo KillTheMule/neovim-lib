@@ -135,13 +135,13 @@ where
         };
         debug!("Get message {:?}", msg);
         let h1 = handler.clone();
-        let writer = writer.clone();
         match msg {
           model::RpcMessage::RpcRequest {
             msgid,
             method,
             params,
           } => {
+            let writer = writer.clone();
             task::spawn(async move {
               let response = match h1.handle_request(method, params).await {
                 Ok(result) => model::RpcMessage::RpcResponse {
