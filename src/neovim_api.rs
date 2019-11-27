@@ -1,4 +1,4 @@
-// Auto generated 2019-11-25 20:25:01.858704
+// Auto generated 2019-11-27 22:25:15.707703
 
 use crate::{
   callerror::{map_generic_error, CallError},
@@ -26,10 +26,7 @@ impl Buffer {
   }
 
   /// since: 1
-  pub async fn line_count(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<i64, CallError> {
+  pub async fn line_count(&self, neovim: &Neovim) -> Result<i64, CallError> {
     neovim
       .call("nvim_buf_line_count", call_args![self.code_data.clone()])
       .await
@@ -39,7 +36,7 @@ impl Buffer {
   /// since: 4
   pub async fn attach(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     send_buffer: bool,
     opts: Vec<(Value, Value)>,
   ) -> Result<bool, CallError> {
@@ -53,7 +50,7 @@ impl Buffer {
       .map_err(map_generic_error)
   }
   /// since: 4
-  pub async fn detach(&self, neovim: &mut Neovim) -> Result<bool, CallError> {
+  pub async fn detach(&self, neovim: &Neovim) -> Result<bool, CallError> {
     neovim
       .call("nvim_buf_detach", call_args![self.code_data.clone()])
       .await
@@ -63,7 +60,7 @@ impl Buffer {
   /// since: 1
   pub async fn get_lines(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     start: i64,
     end: i64,
     strict_indexing: bool,
@@ -80,7 +77,7 @@ impl Buffer {
   /// since: 1
   pub async fn set_lines(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     start: i64,
     end: i64,
     strict_indexing: bool,
@@ -104,7 +101,7 @@ impl Buffer {
   /// since: 5
   pub async fn get_offset(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     index: i64,
   ) -> Result<i64, CallError> {
     neovim
@@ -119,7 +116,7 @@ impl Buffer {
   /// since: 1
   pub async fn get_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<Value, CallError> {
     neovim
@@ -131,7 +128,7 @@ impl Buffer {
   /// since: 2
   pub async fn get_changedtick(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
   ) -> Result<i64, CallError> {
     neovim
       .call(
@@ -145,7 +142,7 @@ impl Buffer {
   /// since: 3
   pub async fn get_keymap(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     mode: &str,
   ) -> Result<Vec<Vec<(Value, Value)>>, CallError> {
     neovim
@@ -160,7 +157,7 @@ impl Buffer {
   /// since: 6
   pub async fn set_keymap(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     mode: &str,
     lhs: &str,
     rhs: &str,
@@ -178,7 +175,7 @@ impl Buffer {
   /// since: 6
   pub async fn del_keymap(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     mode: &str,
     lhs: &str,
   ) -> Result<(), CallError> {
@@ -194,7 +191,7 @@ impl Buffer {
   /// since: 4
   pub async fn get_commands(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     opts: Vec<(Value, Value)>,
   ) -> Result<Vec<(Value, Value)>, CallError> {
     neovim
@@ -209,7 +206,7 @@ impl Buffer {
   /// since: 1
   pub async fn set_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -225,7 +222,7 @@ impl Buffer {
   /// since: 1
   pub async fn del_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<(), CallError> {
     neovim
@@ -237,7 +234,7 @@ impl Buffer {
   /// since: 1
   pub async fn get_option(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<Value, CallError> {
     neovim
@@ -252,7 +249,7 @@ impl Buffer {
   /// since: 1
   pub async fn set_option(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -266,10 +263,7 @@ impl Buffer {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn get_number(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<i64, CallError> {
+  pub async fn get_number(&self, neovim: &Neovim) -> Result<i64, CallError> {
     neovim
       .call("nvim_buf_get_number", call_args![self.code_data.clone()])
       .await
@@ -277,10 +271,7 @@ impl Buffer {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn get_name(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<String, CallError> {
+  pub async fn get_name(&self, neovim: &Neovim) -> Result<String, CallError> {
     neovim
       .call("nvim_buf_get_name", call_args![self.code_data.clone()])
       .await
@@ -290,7 +281,7 @@ impl Buffer {
   /// since: 1
   pub async fn set_name(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<(), CallError> {
     neovim
@@ -303,10 +294,7 @@ impl Buffer {
       .map_err(map_generic_error)
   }
   /// since: 5
-  pub async fn is_loaded(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<bool, CallError> {
+  pub async fn is_loaded(&self, neovim: &Neovim) -> Result<bool, CallError> {
     neovim
       .call("nvim_buf_is_loaded", call_args![self.code_data.clone()])
       .await
@@ -314,7 +302,7 @@ impl Buffer {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn is_valid(&self, neovim: &mut Neovim) -> Result<bool, CallError> {
+  pub async fn is_valid(&self, neovim: &Neovim) -> Result<bool, CallError> {
     neovim
       .call("nvim_buf_is_valid", call_args![self.code_data.clone()])
       .await
@@ -324,7 +312,7 @@ impl Buffer {
   /// since: 1
   pub async fn get_mark(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<(i64, i64), CallError> {
     neovim
@@ -339,7 +327,7 @@ impl Buffer {
   /// since: 1
   pub async fn add_highlight(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     ns_id: i64,
     hl_group: &str,
     line: i64,
@@ -365,7 +353,7 @@ impl Buffer {
   /// since: 5
   pub async fn clear_namespace(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     ns_id: i64,
     line_start: i64,
     line_end: i64,
@@ -382,7 +370,7 @@ impl Buffer {
   /// since: 1
   pub async fn clear_highlight(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     ns_id: i64,
     line_start: i64,
     line_end: i64,
@@ -399,7 +387,7 @@ impl Buffer {
   /// since: 5
   pub async fn set_virtual_text(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     ns_id: i64,
     line: i64,
     chunks: Vec<Value>,
@@ -432,10 +420,7 @@ impl Window {
   }
 
   /// since: 1
-  pub async fn get_buf(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<Buffer, CallError> {
+  pub async fn get_buf(&self, neovim: &Neovim) -> Result<Buffer, CallError> {
     neovim
       .call("nvim_win_get_buf", call_args![self.code_data.clone()])
       .await
@@ -445,7 +430,7 @@ impl Window {
   /// since: 5
   pub async fn set_buf(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     buffer: &Buffer,
   ) -> Result<(), CallError> {
     neovim
@@ -460,7 +445,7 @@ impl Window {
   /// since: 1
   pub async fn get_cursor(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
   ) -> Result<(i64, i64), CallError> {
     neovim
       .call("nvim_win_get_cursor", call_args![self.code_data.clone()])
@@ -471,7 +456,7 @@ impl Window {
   /// since: 1
   pub async fn set_cursor(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     pos: (i64, i64),
   ) -> Result<(), CallError> {
     neovim
@@ -484,10 +469,7 @@ impl Window {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn get_height(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<i64, CallError> {
+  pub async fn get_height(&self, neovim: &Neovim) -> Result<i64, CallError> {
     neovim
       .call("nvim_win_get_height", call_args![self.code_data.clone()])
       .await
@@ -497,7 +479,7 @@ impl Window {
   /// since: 1
   pub async fn set_height(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     height: i64,
   ) -> Result<(), CallError> {
     neovim
@@ -510,7 +492,7 @@ impl Window {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn get_width(&self, neovim: &mut Neovim) -> Result<i64, CallError> {
+  pub async fn get_width(&self, neovim: &Neovim) -> Result<i64, CallError> {
     neovim
       .call("nvim_win_get_width", call_args![self.code_data.clone()])
       .await
@@ -520,7 +502,7 @@ impl Window {
   /// since: 1
   pub async fn set_width(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     width: i64,
   ) -> Result<(), CallError> {
     neovim
@@ -535,7 +517,7 @@ impl Window {
   /// since: 1
   pub async fn get_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<Value, CallError> {
     neovim
@@ -547,7 +529,7 @@ impl Window {
   /// since: 1
   pub async fn set_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -563,7 +545,7 @@ impl Window {
   /// since: 1
   pub async fn del_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<(), CallError> {
     neovim
@@ -575,7 +557,7 @@ impl Window {
   /// since: 1
   pub async fn get_option(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<Value, CallError> {
     neovim
@@ -590,7 +572,7 @@ impl Window {
   /// since: 1
   pub async fn set_option(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -606,7 +588,7 @@ impl Window {
   /// since: 1
   pub async fn get_position(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
   ) -> Result<(i64, i64), CallError> {
     neovim
       .call("nvim_win_get_position", call_args![self.code_data.clone()])
@@ -617,7 +599,7 @@ impl Window {
   /// since: 1
   pub async fn get_tabpage(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
   ) -> Result<Tabpage, CallError> {
     neovim
       .call("nvim_win_get_tabpage", call_args![self.code_data.clone()])
@@ -626,10 +608,7 @@ impl Window {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn get_number(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<i64, CallError> {
+  pub async fn get_number(&self, neovim: &Neovim) -> Result<i64, CallError> {
     neovim
       .call("nvim_win_get_number", call_args![self.code_data.clone()])
       .await
@@ -637,7 +616,7 @@ impl Window {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn is_valid(&self, neovim: &mut Neovim) -> Result<bool, CallError> {
+  pub async fn is_valid(&self, neovim: &Neovim) -> Result<bool, CallError> {
     neovim
       .call("nvim_win_is_valid", call_args![self.code_data.clone()])
       .await
@@ -647,7 +626,7 @@ impl Window {
   /// since: 6
   pub async fn set_config(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     config: Vec<(Value, Value)>,
   ) -> Result<(), CallError> {
     neovim
@@ -662,7 +641,7 @@ impl Window {
   /// since: 6
   pub async fn get_config(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
   ) -> Result<Vec<(Value, Value)>, CallError> {
     neovim
       .call("nvim_win_get_config", call_args![self.code_data.clone()])
@@ -673,7 +652,7 @@ impl Window {
   /// since: 6
   pub async fn close(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     force: bool,
   ) -> Result<(), CallError> {
     neovim
@@ -702,7 +681,7 @@ impl Tabpage {
   /// since: 1
   pub async fn list_wins(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
   ) -> Result<Vec<Window>, CallError> {
     neovim
       .call("nvim_tabpage_list_wins", call_args![self.code_data.clone()])
@@ -713,7 +692,7 @@ impl Tabpage {
   /// since: 1
   pub async fn get_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<Value, CallError> {
     neovim
@@ -728,7 +707,7 @@ impl Tabpage {
   /// since: 1
   pub async fn set_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -744,7 +723,7 @@ impl Tabpage {
   /// since: 1
   pub async fn del_var(
     &self,
-    neovim: &mut Neovim,
+    neovim: &Neovim,
     name: &str,
   ) -> Result<(), CallError> {
     neovim
@@ -757,10 +736,7 @@ impl Tabpage {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn get_win(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<Window, CallError> {
+  pub async fn get_win(&self, neovim: &Neovim) -> Result<Window, CallError> {
     neovim
       .call("nvim_tabpage_get_win", call_args![self.code_data.clone()])
       .await
@@ -768,10 +744,7 @@ impl Tabpage {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn get_number(
-    &self,
-    neovim: &mut Neovim,
-  ) -> Result<i64, CallError> {
+  pub async fn get_number(&self, neovim: &Neovim) -> Result<i64, CallError> {
     neovim
       .call(
         "nvim_tabpage_get_number",
@@ -782,7 +755,7 @@ impl Tabpage {
       .map_err(map_generic_error)
   }
   /// since: 1
-  pub async fn is_valid(&self, neovim: &mut Neovim) -> Result<bool, CallError> {
+  pub async fn is_valid(&self, neovim: &Neovim) -> Result<bool, CallError> {
     neovim
       .call("nvim_tabpage_is_valid", call_args![self.code_data.clone()])
       .await
@@ -826,7 +799,7 @@ impl<'a> IntoVal<Value> for &'a Tabpage {
 }
 
 impl Neovim {
-  pub async fn ui_detach(&mut self) -> Result<(), CallError> {
+  pub async fn ui_detach(&self) -> Result<(), CallError> {
     self
       .call("nvim_ui_detach", call_args![])
       .await
@@ -835,7 +808,7 @@ impl Neovim {
   }
 
   pub async fn ui_try_resize(
-    &mut self,
+    &self,
     width: i64,
     height: i64,
   ) -> Result<(), CallError> {
@@ -847,7 +820,7 @@ impl Neovim {
   }
 
   pub async fn ui_set_option(
-    &mut self,
+    &self,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -859,7 +832,7 @@ impl Neovim {
   }
 
   pub async fn ui_try_resize_grid(
-    &mut self,
+    &self,
     grid: i64,
     width: i64,
     height: i64,
@@ -871,7 +844,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn command(&mut self, command: &str) -> Result<(), CallError> {
+  pub async fn command(&self, command: &str) -> Result<(), CallError> {
     self
       .call("nvim_command", call_args![command])
       .await
@@ -880,7 +853,7 @@ impl Neovim {
   }
 
   pub async fn get_hl_by_name(
-    &mut self,
+    &self,
     name: &str,
     rgb: bool,
   ) -> Result<Vec<(Value, Value)>, CallError> {
@@ -892,7 +865,7 @@ impl Neovim {
   }
 
   pub async fn get_hl_by_id(
-    &mut self,
+    &self,
     hl_id: i64,
     rgb: bool,
   ) -> Result<Vec<(Value, Value)>, CallError> {
@@ -904,7 +877,7 @@ impl Neovim {
   }
 
   pub async fn feedkeys(
-    &mut self,
+    &self,
     keys: &str,
     mode: &str,
     escape_csi: bool,
@@ -916,7 +889,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn input(&mut self, keys: &str) -> Result<i64, CallError> {
+  pub async fn input(&self, keys: &str) -> Result<i64, CallError> {
     self
       .call("nvim_input", call_args![keys])
       .await
@@ -925,7 +898,7 @@ impl Neovim {
   }
 
   pub async fn input_mouse(
-    &mut self,
+    &self,
     button: &str,
     action: &str,
     modifier: &str,
@@ -944,7 +917,7 @@ impl Neovim {
   }
 
   pub async fn replace_termcodes(
-    &mut self,
+    &self,
     str: &str,
     from_part: bool,
     do_lt: bool,
@@ -961,7 +934,7 @@ impl Neovim {
   }
 
   pub async fn command_output(
-    &mut self,
+    &self,
     command: &str,
   ) -> Result<String, CallError> {
     self
@@ -971,7 +944,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn eval(&mut self, expr: &str) -> Result<Value, CallError> {
+  pub async fn eval(&self, expr: &str) -> Result<Value, CallError> {
     self
       .call("nvim_eval", call_args![expr])
       .await
@@ -980,7 +953,7 @@ impl Neovim {
   }
 
   pub async fn execute_lua(
-    &mut self,
+    &self,
     code: &str,
     args: Vec<Value>,
   ) -> Result<Value, CallError> {
@@ -992,7 +965,7 @@ impl Neovim {
   }
 
   pub async fn call_function(
-    &mut self,
+    &self,
     fname: &str,
     args: Vec<Value>,
   ) -> Result<Value, CallError> {
@@ -1004,7 +977,7 @@ impl Neovim {
   }
 
   pub async fn call_dict_function(
-    &mut self,
+    &self,
     dict: Value,
     fname: &str,
     args: Vec<Value>,
@@ -1016,7 +989,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn strwidth(&mut self, text: &str) -> Result<i64, CallError> {
+  pub async fn strwidth(&self, text: &str) -> Result<i64, CallError> {
     self
       .call("nvim_strwidth", call_args![text])
       .await
@@ -1024,7 +997,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn list_runtime_paths(&mut self) -> Result<Vec<String>, CallError> {
+  pub async fn list_runtime_paths(&self) -> Result<Vec<String>, CallError> {
     self
       .call("nvim_list_runtime_paths", call_args![])
       .await
@@ -1032,7 +1005,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn set_current_dir(&mut self, dir: &str) -> Result<(), CallError> {
+  pub async fn set_current_dir(&self, dir: &str) -> Result<(), CallError> {
     self
       .call("nvim_set_current_dir", call_args![dir])
       .await
@@ -1040,7 +1013,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_current_line(&mut self) -> Result<String, CallError> {
+  pub async fn get_current_line(&self) -> Result<String, CallError> {
     self
       .call("nvim_get_current_line", call_args![])
       .await
@@ -1048,10 +1021,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn set_current_line(
-    &mut self,
-    line: &str,
-  ) -> Result<(), CallError> {
+  pub async fn set_current_line(&self, line: &str) -> Result<(), CallError> {
     self
       .call("nvim_set_current_line", call_args![line])
       .await
@@ -1059,7 +1029,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn del_current_line(&mut self) -> Result<(), CallError> {
+  pub async fn del_current_line(&self) -> Result<(), CallError> {
     self
       .call("nvim_del_current_line", call_args![])
       .await
@@ -1067,7 +1037,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_var(&mut self, name: &str) -> Result<Value, CallError> {
+  pub async fn get_var(&self, name: &str) -> Result<Value, CallError> {
     self
       .call("nvim_get_var", call_args![name])
       .await
@@ -1076,7 +1046,7 @@ impl Neovim {
   }
 
   pub async fn set_var(
-    &mut self,
+    &self,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -1087,7 +1057,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn del_var(&mut self, name: &str) -> Result<(), CallError> {
+  pub async fn del_var(&self, name: &str) -> Result<(), CallError> {
     self
       .call("nvim_del_var", call_args![name])
       .await
@@ -1095,7 +1065,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_vvar(&mut self, name: &str) -> Result<Value, CallError> {
+  pub async fn get_vvar(&self, name: &str) -> Result<Value, CallError> {
     self
       .call("nvim_get_vvar", call_args![name])
       .await
@@ -1104,7 +1074,7 @@ impl Neovim {
   }
 
   pub async fn set_vvar(
-    &mut self,
+    &self,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -1115,7 +1085,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_option(&mut self, name: &str) -> Result<Value, CallError> {
+  pub async fn get_option(&self, name: &str) -> Result<Value, CallError> {
     self
       .call("nvim_get_option", call_args![name])
       .await
@@ -1124,7 +1094,7 @@ impl Neovim {
   }
 
   pub async fn set_option(
-    &mut self,
+    &self,
     name: &str,
     value: Value,
   ) -> Result<(), CallError> {
@@ -1135,7 +1105,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn out_write(&mut self, str: &str) -> Result<(), CallError> {
+  pub async fn out_write(&self, str: &str) -> Result<(), CallError> {
     self
       .call("nvim_out_write", call_args![str])
       .await
@@ -1143,7 +1113,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn err_write(&mut self, str: &str) -> Result<(), CallError> {
+  pub async fn err_write(&self, str: &str) -> Result<(), CallError> {
     self
       .call("nvim_err_write", call_args![str])
       .await
@@ -1151,7 +1121,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn err_writeln(&mut self, str: &str) -> Result<(), CallError> {
+  pub async fn err_writeln(&self, str: &str) -> Result<(), CallError> {
     self
       .call("nvim_err_writeln", call_args![str])
       .await
@@ -1159,7 +1129,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn list_bufs(&mut self) -> Result<Vec<Buffer>, CallError> {
+  pub async fn list_bufs(&self) -> Result<Vec<Buffer>, CallError> {
     self
       .call("nvim_list_bufs", call_args![])
       .await
@@ -1167,7 +1137,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_current_buf(&mut self) -> Result<Buffer, CallError> {
+  pub async fn get_current_buf(&self) -> Result<Buffer, CallError> {
     self
       .call("nvim_get_current_buf", call_args![])
       .await
@@ -1176,7 +1146,7 @@ impl Neovim {
   }
 
   pub async fn set_current_buf(
-    &mut self,
+    &self,
     buffer: &Buffer,
   ) -> Result<(), CallError> {
     self
@@ -1186,7 +1156,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn list_wins(&mut self) -> Result<Vec<Window>, CallError> {
+  pub async fn list_wins(&self) -> Result<Vec<Window>, CallError> {
     self
       .call("nvim_list_wins", call_args![])
       .await
@@ -1194,7 +1164,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_current_win(&mut self) -> Result<Window, CallError> {
+  pub async fn get_current_win(&self) -> Result<Window, CallError> {
     self
       .call("nvim_get_current_win", call_args![])
       .await
@@ -1203,7 +1173,7 @@ impl Neovim {
   }
 
   pub async fn set_current_win(
-    &mut self,
+    &self,
     window: &Window,
   ) -> Result<(), CallError> {
     self
@@ -1214,7 +1184,7 @@ impl Neovim {
   }
 
   pub async fn create_buf(
-    &mut self,
+    &self,
     listed: bool,
     scratch: bool,
   ) -> Result<Buffer, CallError> {
@@ -1226,7 +1196,7 @@ impl Neovim {
   }
 
   pub async fn open_win(
-    &mut self,
+    &self,
     buffer: &Buffer,
     enter: bool,
     config: Vec<(Value, Value)>,
@@ -1238,7 +1208,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn list_tabpages(&mut self) -> Result<Vec<Tabpage>, CallError> {
+  pub async fn list_tabpages(&self) -> Result<Vec<Tabpage>, CallError> {
     self
       .call("nvim_list_tabpages", call_args![])
       .await
@@ -1246,7 +1216,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_current_tabpage(&mut self) -> Result<Tabpage, CallError> {
+  pub async fn get_current_tabpage(&self) -> Result<Tabpage, CallError> {
     self
       .call("nvim_get_current_tabpage", call_args![])
       .await
@@ -1255,7 +1225,7 @@ impl Neovim {
   }
 
   pub async fn set_current_tabpage(
-    &mut self,
+    &self,
     tabpage: &Tabpage,
   ) -> Result<(), CallError> {
     self
@@ -1265,10 +1235,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn create_namespace(
-    &mut self,
-    name: &str,
-  ) -> Result<i64, CallError> {
+  pub async fn create_namespace(&self, name: &str) -> Result<i64, CallError> {
     self
       .call("nvim_create_namespace", call_args![name])
       .await
@@ -1276,9 +1243,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_namespaces(
-    &mut self,
-  ) -> Result<Vec<(Value, Value)>, CallError> {
+  pub async fn get_namespaces(&self) -> Result<Vec<(Value, Value)>, CallError> {
     self
       .call("nvim_get_namespaces", call_args![])
       .await
@@ -1286,7 +1251,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn subscribe(&mut self, event: &str) -> Result<(), CallError> {
+  pub async fn subscribe(&self, event: &str) -> Result<(), CallError> {
     self
       .call("nvim_subscribe", call_args![event])
       .await
@@ -1294,7 +1259,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn unsubscribe(&mut self, event: &str) -> Result<(), CallError> {
+  pub async fn unsubscribe(&self, event: &str) -> Result<(), CallError> {
     self
       .call("nvim_unsubscribe", call_args![event])
       .await
@@ -1302,10 +1267,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_color_by_name(
-    &mut self,
-    name: &str,
-  ) -> Result<i64, CallError> {
+  pub async fn get_color_by_name(&self, name: &str) -> Result<i64, CallError> {
     self
       .call("nvim_get_color_by_name", call_args![name])
       .await
@@ -1313,9 +1275,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_color_map(
-    &mut self,
-  ) -> Result<Vec<(Value, Value)>, CallError> {
+  pub async fn get_color_map(&self) -> Result<Vec<(Value, Value)>, CallError> {
     self
       .call("nvim_get_color_map", call_args![])
       .await
@@ -1323,7 +1283,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_mode(&mut self) -> Result<Vec<(Value, Value)>, CallError> {
+  pub async fn get_mode(&self) -> Result<Vec<(Value, Value)>, CallError> {
     self
       .call("nvim_get_mode", call_args![])
       .await
@@ -1332,7 +1292,7 @@ impl Neovim {
   }
 
   pub async fn get_keymap(
-    &mut self,
+    &self,
     mode: &str,
   ) -> Result<Vec<Vec<(Value, Value)>>, CallError> {
     self
@@ -1343,7 +1303,7 @@ impl Neovim {
   }
 
   pub async fn set_keymap(
-    &mut self,
+    &self,
     mode: &str,
     lhs: &str,
     rhs: &str,
@@ -1357,7 +1317,7 @@ impl Neovim {
   }
 
   pub async fn del_keymap(
-    &mut self,
+    &self,
     mode: &str,
     lhs: &str,
   ) -> Result<(), CallError> {
@@ -1369,7 +1329,7 @@ impl Neovim {
   }
 
   pub async fn get_commands(
-    &mut self,
+    &self,
     opts: Vec<(Value, Value)>,
   ) -> Result<Vec<(Value, Value)>, CallError> {
     self
@@ -1379,7 +1339,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_api_info(&mut self) -> Result<Vec<Value>, CallError> {
+  pub async fn get_api_info(&self) -> Result<Vec<Value>, CallError> {
     self
       .call("nvim_get_api_info", call_args![])
       .await
@@ -1388,7 +1348,7 @@ impl Neovim {
   }
 
   pub async fn set_client_info(
-    &mut self,
+    &self,
     name: &str,
     version: Vec<(Value, Value)>,
     typ: &str,
@@ -1406,7 +1366,7 @@ impl Neovim {
   }
 
   pub async fn get_chan_info(
-    &mut self,
+    &self,
     chan: i64,
   ) -> Result<Vec<(Value, Value)>, CallError> {
     self
@@ -1416,7 +1376,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn list_chans(&mut self) -> Result<Vec<Value>, CallError> {
+  pub async fn list_chans(&self) -> Result<Vec<Value>, CallError> {
     self
       .call("nvim_list_chans", call_args![])
       .await
@@ -1425,7 +1385,7 @@ impl Neovim {
   }
 
   pub async fn call_atomic(
-    &mut self,
+    &self,
     calls: Vec<Value>,
   ) -> Result<Vec<Value>, CallError> {
     self
@@ -1436,7 +1396,7 @@ impl Neovim {
   }
 
   pub async fn parse_expression(
-    &mut self,
+    &self,
     expr: &str,
     flags: &str,
     highlight: bool,
@@ -1448,7 +1408,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn list_uis(&mut self) -> Result<Vec<Value>, CallError> {
+  pub async fn list_uis(&self) -> Result<Vec<Value>, CallError> {
     self
       .call("nvim_list_uis", call_args![])
       .await
@@ -1457,7 +1417,7 @@ impl Neovim {
   }
 
   pub async fn get_proc_children(
-    &mut self,
+    &self,
     pid: i64,
   ) -> Result<Vec<Value>, CallError> {
     self
@@ -1467,7 +1427,7 @@ impl Neovim {
       .map_err(map_generic_error)
   }
 
-  pub async fn get_proc(&mut self, pid: i64) -> Result<Value, CallError> {
+  pub async fn get_proc(&self, pid: i64) -> Result<Value, CallError> {
     self
       .call("nvim_get_proc", call_args![pid])
       .await
@@ -1476,7 +1436,7 @@ impl Neovim {
   }
 
   pub async fn select_popupmenu_item(
-    &mut self,
+    &self,
     item: i64,
     insert: bool,
     finish: bool,

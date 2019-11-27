@@ -5,6 +5,7 @@ use std::{
   sync::{Arc, Mutex},
   thread,
   thread::JoinHandle,
+  ops::AddAssign,
 };
 
 use async_std::{sync, task};
@@ -35,7 +36,7 @@ where
 {
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
-  pub(crate) msgid_counter: u64,
+  pub(crate) msgid_counter: Mutex<u64>,
   pub dispatch_guard: JoinHandle<()>,
   _p: PhantomData<R>,
 }
@@ -61,7 +62,7 @@ where
 
     Client {
       writer,
-      msgid_counter: 0,
+      msgid_counter: Mutex::new(0),
       queue,
       dispatch_guard,
       _p: PhantomData,
@@ -69,12 +70,13 @@ where
   }
 
   fn send_msg(
-    &mut self,
+    &self,
     method: &str,
     args: Vec<Value>,
   ) -> sync::Receiver<Result<Value, Value>> {
-    let msgid = self.msgid_counter;
-    self.msgid_counter += 1;
+    let msgid_counter = &mut self.msgid_counter.lock().unwrap();
+    let msgid = msgid_counter.clone();
+    msgid_counter.add_assign(1);
 
     let req = model::RpcMessage::RpcRequest {
       msgid,
@@ -97,7 +99,7 @@ where
   }
 
   pub async fn call(
-    &mut self,
+    &self,
     method: &str,
     args: Vec<Value>,
   ) -> Result<Value, Value> {

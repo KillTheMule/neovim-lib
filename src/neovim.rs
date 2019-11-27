@@ -149,21 +149,21 @@ impl Neovim {
 
   /// Call can be made only after event loop begin processing
   pub async fn call(
-    &mut self,
+    &self,
     method: &str,
     args: Vec<Value>,
   ) -> result::Result<Value, Value> {
     match self.connection {
-      ClientConnection::Child(ref mut client, _) => {
+      ClientConnection::Child(ref client, _) => {
         client.call(method, args).await
       }
-      ClientConnection::Parent(ref mut client) => {
+      ClientConnection::Parent(ref client) => {
         client.call(method, args).await
       }
-      ClientConnection::Tcp(ref mut client) => client.call(method, args).await,
+      ClientConnection::Tcp(ref client) => client.call(method, args).await,
 
       #[cfg(unix)]
-      ClientConnection::UnixSocket(ref mut client) => {
+      ClientConnection::UnixSocket(ref client) => {
         client.call(method, args).await
       }
     }

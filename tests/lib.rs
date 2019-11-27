@@ -14,7 +14,7 @@ use tempdir::TempDir;
 #[test]
 fn start_stop_test() {
   let handler = DefaultHandler{};
-  let mut nvim = if cfg!(target_os = "windows") {
+  let nvim = if cfg!(target_os = "windows") {
     Neovim::new_child_path("E:\\Neovim\\bin\\nvim.exe", handler).unwrap()
   } else {
     Neovim::new_child(handler).unwrap()
@@ -27,7 +27,7 @@ fn start_stop_test() {
 #[test]
 fn remote_test() {
   let handler = DefaultHandler{};
-  let mut nvim = Neovim::new_tcp("127.0.0.1:6666", handler).unwrap();
+  let nvim = Neovim::new_tcp("127.0.0.1:6666", handler).unwrap();
   task::block_on(nvim.command("echo \"Test\"")).unwrap();
 }
 
@@ -89,7 +89,7 @@ fn can_connect_via_unix_socket() {
   }
 
   let handler = DefaultHandler{};
-  let mut nvim = Neovim::new_unix_socket(&socket_path, handler).expect(&format!(
+  let nvim = Neovim::new_unix_socket(&socket_path, handler).expect(&format!(
     "Unable to connect to neovim's unix socket at {:?}",
     &socket_path
   ));

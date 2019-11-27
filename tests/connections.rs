@@ -1,6 +1,8 @@
 extern crate neovim_lib;
 extern crate rmp;
 
+use std::sync::Arc;
+
 use async_std::{sync, task};
 use async_trait::async_trait;
 use neovim_lib::{neovim::Neovim, Handler, RequestHandler};
@@ -61,7 +63,7 @@ fn can_connect_to_child() {
     from_main: handler_from_main,
   };
 
-  let mut nvim = Neovim::new_child_cmd(
+  let nvim = Neovim::new_child_cmd(
     Command::new(nvimpath)
       .args(&[
         "-u",
@@ -79,6 +81,13 @@ fn can_connect_to_child() {
   )
   .unwrap();
 
+  let nvim = Arc::new(nvim);
+  let nv = nvim.clone();
+
+  task::spawn(async move {
+    nv.set_var("oogle", Value::from("doodle")).await
+  });
+
   task::block_on(async move {
     while let Some(v) = main_from_handler.recv().await {
       eprintln!("Req {}", v.as_str().unwrap());
@@ -91,6 +100,8 @@ fn can_connect_to_child() {
         .into();
       x.push_str(" - ");
       x.push_str(nvim.get_vvar("progname").await.unwrap().as_str().unwrap());
+      x.push_str(" - ");
+      x.push_str(nvim.get_var("oogle").await.unwrap().as_str().unwrap());
       main_to_handler.send(Value::from(x)).await;
       break;
     }
