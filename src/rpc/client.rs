@@ -139,7 +139,6 @@ where
         }
       };
       debug!("Get message {:?}", msg);
-      let h1 = handler.clone();
       match msg {
         model::RpcMessage::RpcRequest {
           msgid,
@@ -147,8 +146,9 @@ where
           params,
         } => {
           let writer = writer.clone();
+          let handler = handler.clone();
           task::spawn(async move {
-            let response = match h1.handle_request(method, params).await {
+            let response = match handler.handle_request(method, params).await {
               Ok(result) => model::RpcMessage::RpcResponse {
                 msgid,
                 result,
@@ -179,7 +179,8 @@ where
           }
         }
         model::RpcMessage::RpcNotification { method, params } => {
-          task::spawn(async move { h1.handle_notify(method, params).await });
+          let handler = handler.clone();
+          task::spawn(async move { handler.handle_notify(method, params).await });
         }
       };
     }
