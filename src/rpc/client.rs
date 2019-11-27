@@ -36,7 +36,7 @@ where
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
   pub(crate) msgid_counter: u64,
-  pub dispatch_guard: Option<JoinHandle<()>>,
+  pub dispatch_guard: JoinHandle<()>,
   _p: PhantomData<R>,
 }
 
@@ -50,18 +50,22 @@ where
     H: Handler + Send + 'static,
   {
     let queue = Arc::new(Mutex::new(Vec::new()));
-    let mut client = Client {
-      writer: Arc::new(Mutex::new(BufWriter::new(writer))),
-      msgid_counter: 0,
-      queue: queue,
-      dispatch_guard: None,
-      _p: PhantomData,
-    };
-
+    let writer = Arc::new(Mutex::new(BufWriter::new(writer)));
     let reader = BufReader::new(reader);
-    let j = client.dispatch_thread(handler, reader);
-    client.dispatch_guard = Some(j);
-    client
+
+    let queue_t = queue.clone();
+    let writer_t = writer.clone();
+
+    let dispatch_guard =
+      thread::spawn(move || Self::io_loop(handler, reader, queue_t, writer_t));
+
+    Client {
+      writer,
+      msgid_counter: 0,
+      queue,
+      dispatch_guard,
+      _p: PhantomData,
+    }
   }
 
   fn send_msg(
@@ -116,74 +120,69 @@ where
     });
   }
 
-  pub(crate) fn dispatch_thread<H>(
-    &mut self,
+  fn io_loop<H>(
     handler: H,
     mut reader: BufReader<R>,
-  ) -> JoinHandle<()>
-  where
+    queue: Queue,
+    writer: Arc<Mutex<BufWriter<W>>>,
+  ) where
     H: Handler + Sync + 'static,
   {
-    let queue = self.queue.clone();
-    let writer = self.writer.clone();
+    let handler = Arc::new(handler);
+    loop {
+      let msg = match model::decode(&mut reader) {
+        Ok(msg) => msg,
+        Err(e) => {
+          error!("Error while reading: {}", e);
+          Self::send_error_to_callers(&queue, &e);
+          return;
+        }
+      };
+      debug!("Get message {:?}", msg);
+      let h1 = handler.clone();
+      match msg {
+        model::RpcMessage::RpcRequest {
+          msgid,
+          method,
+          params,
+        } => {
+          let writer = writer.clone();
+          task::spawn(async move {
+            let response = match h1.handle_request(method, params).await {
+              Ok(result) => model::RpcMessage::RpcResponse {
+                msgid,
+                result,
+                error: Value::Nil,
+              },
+              Err(error) => model::RpcMessage::RpcResponse {
+                msgid,
+                result: Value::Nil,
+                error,
+              },
+            };
 
-    thread::spawn(move || {
-      let handler = Arc::new(handler);
-      loop {
-        let msg = match model::decode(&mut reader) {
-          Ok(msg) => msg,
-          Err(e) => {
-            error!("Error while reading: {}", e);
-            Self::send_error_to_callers(&queue, &e);
-            return;
+            let writer = &mut *writer.lock().unwrap();
+            model::encode(writer, response)
+              .expect("Error sending RPC response");
+          });
+        }
+        model::RpcMessage::RpcResponse {
+          msgid,
+          result,
+          error,
+        } => {
+          let sender = find_sender(&queue, msgid);
+          if error != Value::Nil {
+            sender.send(Err(error));
+          } else {
+            sender.send(Ok(result));
           }
-        };
-        debug!("Get message {:?}", msg);
-        let h1 = handler.clone();
-        match msg {
-          model::RpcMessage::RpcRequest {
-            msgid,
-            method,
-            params,
-          } => {
-            let writer = writer.clone();
-            task::spawn(async move {
-              let response = match h1.handle_request(method, params).await {
-                Ok(result) => model::RpcMessage::RpcResponse {
-                  msgid,
-                  result,
-                  error: Value::Nil,
-                },
-                Err(error) => model::RpcMessage::RpcResponse {
-                  msgid,
-                  result: Value::Nil,
-                  error,
-                },
-              };
-
-              let writer = &mut *writer.lock().unwrap();
-              model::encode(writer, response)
-                .expect("Error sending RPC response");
-            });
-          }
-          model::RpcMessage::RpcResponse {
-            msgid,
-            result,
-            error,
-          } => {
-            let sender = find_sender(&queue, msgid);
-            if error != Value::Nil {
-              sender.send(Err(error));
-            } else {
-              sender.send(Ok(result));
-            }
-          }
-          model::RpcMessage::RpcNotification { method, params } => {
-            task::spawn(async move { h1.handle_notify(method, params).await });
-          }
-        };
-      }
-    })
+        }
+        model::RpcMessage::RpcNotification { method, params } => {
+          task::spawn(async move { h1.handle_notify(method, params).await });
+        }
+      };
+    }
   }
 }
 
