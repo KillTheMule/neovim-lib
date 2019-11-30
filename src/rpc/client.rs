@@ -2,8 +2,7 @@ use std::{
   error::Error,
   io::{BufReader, BufWriter, Read, Write},
   marker::PhantomData,
-  ops::AddAssign,
-  sync::{Arc, Mutex},
+  sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}},
   thread,
   thread::JoinHandle,
 };
@@ -17,6 +16,7 @@ use super::model;
 
 type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
 
+#[derive(Clone)]
 pub struct Client<R, W>
 where
   R: Read + Send + 'static,
@@ -24,7 +24,7 @@ where
 {
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
-  pub(crate) msgid_counter: Mutex<u64>,
+  pub(crate) msgid_counter: Arc<AtomicU64>,
   _p: PhantomData<R>,
 }
 
@@ -49,7 +49,7 @@ where
 
     (Client {
       writer,
-      msgid_counter: Mutex::new(0),
+      msgid_counter: Arc::new(AtomicU64::new(0)),
       queue,
       _p: PhantomData,
     }, dispatch_guard)
@@ -60,9 +60,7 @@ where
     method: &str,
     args: Vec<Value>,
   ) -> sync::Receiver<Result<Value, Value>> {
-    let msgid_counter = &mut self.msgid_counter.lock().unwrap();
-    let msgid = msgid_counter.clone();
-    msgid_counter.add_assign(1);
+    let msgid = self.msgid_counter.fetch_add(1, Ordering::SeqCst);
 
     let req = model::RpcMessage::RpcRequest {
       msgid,
