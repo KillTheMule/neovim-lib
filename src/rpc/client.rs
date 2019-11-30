@@ -25,7 +25,6 @@ where
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
   pub(crate) msgid_counter: Mutex<u64>,
-  pub dispatch_guard: JoinHandle<()>,
   _p: PhantomData<R>,
 }
 
@@ -34,7 +33,7 @@ where
   R: Read + Send + 'static,
   W: Write + Send + 'static,
 {
-  pub fn new<H>(reader: R, writer: W, handler: H) -> Self
+  pub fn new<H>(reader: R, writer: W, handler: H) -> (Self, JoinHandle<()>)
   where
     H: Handler + Send + 'static,
   {
@@ -48,13 +47,12 @@ where
     let dispatch_guard =
       thread::spawn(move || Self::io_loop(handler, reader, queue_t, writer_t));
 
-    Client {
+    (Client {
       writer,
       msgid_counter: Mutex::new(0),
       queue,
-      dispatch_guard,
       _p: PhantomData,
-    }
+    }, dispatch_guard)
   }
 
   fn send_msg(

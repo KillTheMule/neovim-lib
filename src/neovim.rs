@@ -5,6 +5,7 @@ use std::{
   process::{Child, ChildStdin, ChildStdout, Command, Stdio},
   result,
   time::Duration,
+  thread::JoinHandle,
 };
 
 #[cfg(unix)]
@@ -23,6 +24,7 @@ use rmpv::Value;
 pub struct Neovim {
   pub connection: ClientConnection,
   pub timeout: Option<Duration>,
+  pub dispatch_guard: JoinHandle<()>,
 }
 
 macro_rules! call_args {
@@ -45,12 +47,13 @@ impl Neovim {
   {
     let stream = TcpStream::connect(addr)?;
     let read = stream.try_clone()?;
-    let client = Client::new(stream, read, handler);
+    let (client, dispatch_guard) = Client::new(stream, read, handler);
     let connection = ClientConnection::Tcp(client);
 
     Ok(Neovim {
       connection,
       timeout: Some(Duration::new(5, 0)),
+      dispatch_guard,
     })
   }
 
@@ -66,12 +69,13 @@ impl Neovim {
     let stream = UnixStream::connect(path)?;
     let read = stream.try_clone()?;
 
-    let client = Client::new(stream, read, handler);
+    let (client, dispatch_guard) = Client::new(stream, read, handler);
     let connection = ClientConnection::UnixSocket(client);
 
     Ok(Neovim {
       connection,
       timeout: Some(Duration::new(5, 0)),
+      dispatch_guard,
     })
   }
 
@@ -115,12 +119,13 @@ impl Neovim {
       .take()
       .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdin"))?;
 
-    let client = Client::new(stdout, stdin, handler);
+    let (client, dispatch_guard) = Client::new(stdout, stdin, handler);
     let connection = ClientConnection::Child(client, child);
 
     Ok(Neovim {
       connection,
       timeout: Some(Duration::new(5, 0)),
+      dispatch_guard,
     })
   }
 
@@ -129,12 +134,13 @@ impl Neovim {
   where
     H: Handler + Send + 'static,
   {
-    let client = Client::new(io::stdin(), io::stdout(), handler);
+    let (client, dispatch_guard) = Client::new(io::stdin(), io::stdout(), handler);
     let connection = ClientConnection::Parent(client);
 
     Ok(Neovim {
       connection,
       timeout: Some(Duration::new(5, 0)),
+      dispatch_guard,
     })
   }
 
