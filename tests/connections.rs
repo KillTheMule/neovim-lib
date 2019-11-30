@@ -18,6 +18,10 @@ impl Handler for NH {
     eprintln!("Notification: {}", name);
     match name.as_ref() {
       "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
+      "quit" => {
+          let (sender, _receiver) = sync::channel(1);
+          self.to_main.send((Value::from("quit"), sender)).await;
+        }
       _ => {}
     };
   }
@@ -85,7 +89,7 @@ fn can_connect_to_child() {
   task::spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
 
   task::block_on(async move {
-    while let Some((v, c)) = main_from_handler.recv().await {
+    'w: while let Some((v, c)) = main_from_handler.recv().await {
       let v = v.as_str().unwrap();
       eprintln!("Req {}", v);
 
@@ -110,6 +114,7 @@ fn can_connect_to_child() {
           x.push_str(" - ");
           x.push_str(nvim.eval("rpcrequest(1,'req', 'z')").await.unwrap().as_str().unwrap());
           c.send(Value::from(x)).await;
+          nvim.command("call rpcnotify(1, 'quit')").await.unwrap();
         }),
         "z" => task::spawn(async move {
           let x:String =
