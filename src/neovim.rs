@@ -1,9 +1,5 @@
 use std::{
-  io::Write,
-  process::Child,
-  result,
-  thread::JoinHandle,
-  clone::Clone,
+  clone::Clone, io::Write, process::Child, result, thread::JoinHandle,
 };
 
 use crate::{
@@ -16,8 +12,10 @@ use async_std::task;
 use rmpv::Value;
 
 /// An active Neovim session.
-pub enum Neovim<W> 
-where W: Write + Send + 'static {
+pub enum Neovim<W>
+where
+  W: Write + Send + 'static,
+{
   Child(Requester<W>, JoinHandle<()>, Child),
   Parent(Requester<W>, JoinHandle<()>),
   Tcp(Requester<W>, JoinHandle<()>),
@@ -38,22 +36,19 @@ macro_rules! call_args {
     }};
 }
 
-
-
 impl<W> Neovim<W>
-where W: Write + Send + 'static {
-
-  pub fn requester(&self) -> Requester<W>
-  {
+where
+  W: Write + Send + 'static,
+{
+  pub fn requester(&self) -> Requester<W> {
     use Neovim::*;
 
     match self {
-      Child(r, _, _) | Parent(r, _ ) | Tcp(r, _ ) => r.clone(),
+      Child(r, _, _) | Parent(r, _) | Tcp(r, _) => r.clone(),
       #[cfg(unix)]
       UnixSocket(r, _) => r.clone(),
     }
   }
-
 
   /// Call can be made only after event loop begin processing
   pub async fn call(

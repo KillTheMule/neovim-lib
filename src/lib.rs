@@ -40,16 +40,18 @@ mod rpc;
 #[macro_use]
 pub mod neovim;
 pub mod callerror;
+pub mod create;
 pub mod neovim_api;
 pub mod uioptions;
-pub mod create;
 
 pub use crate::{
   callerror::CallError,
   neovim::Neovim,
-  rpc::handler::{ChannelHandler, DefaultHandler},
+  rpc::{
+    handler::{ChannelHandler, DefaultHandler},
+    Requester,
+  },
   uioptions::{UiAttachOptions, UiOption},
-  rpc::Requester,
 };
 
 pub use crate::rpc::handler::{Handler, RequestHandler};

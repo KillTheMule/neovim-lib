@@ -35,7 +35,7 @@ where
     Requester {
       writer: self.writer.clone(),
       queue: self.queue.clone(),
-      msgid_counter: self.msgid_counter.clone()
+      msgid_counter: self.msgid_counter.clone(),
     }
   }
 }

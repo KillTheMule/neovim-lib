@@ -1,9 +1,11 @@
-use std::net::TcpStream;
-use std::process::{ChildStdin, Command, Stdio};
-use std::io::{self, Error, ErrorKind, Stdout}; 
-use std::path::Path;
+use std::{
+  io::{self, Error, ErrorKind, Stdout},
+  net::TcpStream,
+  path::Path,
+  process::{ChildStdin, Command, Stdio},
+};
 
-use crate::{Requester, Neovim, Handler};
+use crate::{Handler, Neovim, Requester};
 
 #[cfg(unix)]
 use unix_socket::UnixStream;
@@ -63,8 +65,10 @@ where
 /// Connect to a Neovim instance by spawning a new one
 ///
 /// stdin/stdout settings will be rewrited to `Stdio::piped()`
-pub fn new_child_cmd<H>(cmd: &mut Command, handler: H) ->
-  io::Result<Neovim<ChildStdin>>
+pub fn new_child_cmd<H>(
+  cmd: &mut Command,
+  handler: H,
+) -> io::Result<Neovim<ChildStdin>>
 where
   H: Handler + Send + 'static,
 {
