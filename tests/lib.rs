@@ -21,7 +21,7 @@ fn start_stop_test() {
     create::new_child(handler).unwrap()
   };
 
-  println!("{:?}", task::block_on(nvim.requester().get_api_info()).unwrap());
+  println!("{:?}", task::block_on(nvim.get_api_info()).unwrap());
 }
 
 #[ignore]
@@ -29,7 +29,7 @@ fn start_stop_test() {
 fn remote_test() {
   let handler = DefaultHandler{};
   let nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
-  task::block_on(nvim.requester().command("echo \"Test\"")).unwrap();
+  task::block_on(nvim.command("echo \"Test\"")).unwrap();
 }
 
 #[ignore]
@@ -37,7 +37,7 @@ fn remote_test() {
 fn edit_test() {
   let handler = DefaultHandler{};
   let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
-  let buffers = task::block_on(nvim.requester().list_bufs()).unwrap();
+  let buffers = task::block_on(nvim.list_bufs()).unwrap();
   task::block_on(buffers[0].set_lines(
     &mut nvim,
     0,
@@ -47,7 +47,7 @@ fn edit_test() {
   ))
   .unwrap();
   task::block_on(nvim.requester().command("vsplit")).unwrap();
-  let windows = task::block_on(nvim.requester().list_wins()).unwrap();
+  let windows = task::block_on(nvim.list_wins()).unwrap();
   task::block_on(windows[0].set_width(&mut nvim, 10)).unwrap();
 }
 
@@ -95,7 +95,7 @@ fn can_connect_via_unix_socket() {
     &socket_path
   ));
 
-  let servername = task::block_on(nvim.requester().get_vvar("servername"))
+  let servername = task::block_on(nvim.get_vvar("servername"))
     .expect("Error retrieving servername from neovim over unix socket");
 
   // let's make sure the servername string and socket path string both match.

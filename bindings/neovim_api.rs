@@ -76,3 +76,19 @@ where
 
     {% endfor %}
 }
+
+impl<W> Neovim<W>
+where
+      W: Write + Send + 'static,
+{
+    {% for f in functions if not f.ext %}
+    pub async fn {{f.name|replace('nvim_', '')}}(&self, {{f.argstring}}) -> Result<{{f.return_type.native_type_ret}}, CallError> {
+        self.call("{{f.name}}",
+                          call_args![{{ f.parameters|map(attribute = "name")|join(", ") }}])
+                    .await
+                    .map(map_result)
+                    .map_err(map_generic_error)
+    }
+
+    {% endfor %}
+}
