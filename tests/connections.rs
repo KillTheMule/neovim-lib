@@ -57,7 +57,7 @@ fn can_connect_to_child() {
     endfun""#;
 
   let (handler_to_main, main_from_handler) = sync::channel(2);
-  let (main_to_handler, handler_from_main) = sync::channel(2);
+  let (main_to_handler, handler_from_main) = sync::channel(10);
   let handler = NH {
     to_main: handler_to_main,
     from_main: handler_from_main,
@@ -84,26 +84,43 @@ fn can_connect_to_child() {
   let nvim = Arc::new(nvim);
   let nv = nvim.clone();
 
-  task::spawn(async move {
-    nv.set_var("oogle", Value::from("doodle")).await
-  });
+  task::spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
 
   task::block_on(async move {
     while let Some(v) = main_from_handler.recv().await {
-      eprintln!("Req {}", v.as_str().unwrap());
-      let mut x: String = nvim
-        .get_vvar("servername")
-        .await
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .into();
-      x.push_str(" - ");
-      x.push_str(nvim.get_vvar("progname").await.unwrap().as_str().unwrap());
-      x.push_str(" - ");
-      x.push_str(nvim.get_var("oogle").await.unwrap().as_str().unwrap());
-      main_to_handler.send(Value::from(x)).await;
-      break;
+      let v = v.as_str().unwrap();
+      eprintln!("Req {}", v);
+
+      let nvim = nvim.clone();
+      let main_to_handler = main_to_handler.clone();
+      match v {
+        "y" => task::spawn(async move {
+          let mut x: String = nvim
+            .get_vvar("servername")
+            .await
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .into();
+          x.push_str(" - ");
+          x.push_str(
+            nvim.get_vvar("progname").await.unwrap().as_str().unwrap(),
+          );
+          x.push_str(" - ");
+          x.push_str(nvim.get_var("oogle").await.unwrap().as_str().unwrap());
+          x.push_str(" - ");
+          x.push_str(nvim.eval("rpcrequest(1,'dummy')").await.unwrap().as_str().unwrap());
+          x.push_str(" - ");
+          x.push_str(nvim.eval("rpcrequest(1,'req', 'z')").await.unwrap().as_str().unwrap());
+          main_to_handler.send(Value::from(x)).await;
+        }),
+        "z" => task::spawn(async move {
+          let x:String =
+            nvim.get_vvar("progname").await.unwrap().as_str().unwrap().into();
+          main_to_handler.send(Value::from(x)).await;
+        }),
+        _ => break,
+      };
     }
   });
   eprintln!("Quitting");
