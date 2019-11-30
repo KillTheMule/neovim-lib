@@ -2,10 +2,10 @@ use std::{
   error::Error,
   io::{BufReader, BufWriter, Read, Write},
   marker::PhantomData,
+  ops::AddAssign,
   sync::{Arc, Mutex},
   thread,
   thread::JoinHandle,
-  ops::AddAssign,
 };
 
 use async_std::{sync, task};
@@ -15,19 +15,7 @@ use rmpv::Value;
 
 use super::model;
 
-type Queue = Arc<Mutex<Vec<(u64, Sender)>>>;
-
-pub enum Sender {
-  Sync(sync::Sender<Result<Value, Value>>),
-}
-
-impl Sender {
-  fn send(self, res: Result<Value, Value>) {
-    match self {
-      Sender::Sync(sender) => task::block_on(sender.send(res)),
-    };
-  }
-}
+type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
 
 pub struct Client<R, W>
 where
@@ -86,11 +74,7 @@ where
 
     let (sender, receiver) = sync::channel(1);
 
-    self
-      .queue
-      .lock()
-      .unwrap()
-      .push((msgid, Sender::Sync(sender)));
+    self.queue.lock().unwrap().push((msgid, sender));
 
     let writer = &mut *self.writer.lock().unwrap();
     model::encode(writer, req).expect("Error sending message");
@@ -116,9 +100,8 @@ where
   fn send_error_to_callers(queue: &Queue, err: &Box<dyn Error>) {
     let mut queue = queue.lock().unwrap();
     queue.drain(0..).for_each(|sender| {
-      sender
-        .1
-        .send(Err(Value::from(format!("Error read response: {}", err))))
+      let e = format!("Error read response: {}", err);
+      task::spawn(async move { sender.1.send(Err(Value::from(e))).await });
     });
   }
 
@@ -155,10 +138,10 @@ where
               Ok(result) => {
                 eprintln!("Responding with id {}", msgid);
                 let r = model::RpcMessage::RpcResponse {
-                        msgid,
-                        result,
-                        error: Value::Nil,
-                      };
+                  msgid,
+                  result,
+                  error: Value::Nil,
+                };
                 r
               }
               Err(error) => model::RpcMessage::RpcResponse {
@@ -180,14 +163,20 @@ where
         } => {
           let sender = find_sender(&queue, msgid);
           if error != Value::Nil {
-            sender.send(Err(error));
+            task::spawn(async move {
+              sender.send(Err(error)).await;
+            });
           } else {
-            sender.send(Ok(result));
+            task::spawn(async move {
+              sender.send(Ok(result)).await;
+            });
           }
         }
         model::RpcMessage::RpcNotification { method, params } => {
           let handler = handler.clone();
-          task::spawn(async move { handler.handle_notify(method, params).await });
+          task::spawn(
+            async move { handler.handle_notify(method, params).await },
+          );
         }
       };
     }
@@ -198,7 +187,10 @@ where
  * is that Vec is faster on small queue sizes
  * in most cases Vec.len = 1 so we just take first item in iteration.
  */
-fn find_sender(queue: &Queue, msgid: u64) -> Sender {
+fn find_sender(
+  queue: &Queue,
+  msgid: u64,
+) -> sync::Sender<Result<Value, Value>> {
   let mut queue = queue.lock().unwrap();
 
   let pos = queue.iter().position(|req| req.0 == msgid).unwrap();
@@ -215,15 +207,15 @@ mod tests {
 
     {
       let (sender, _receiver) = sync::channel(1);
-      queue.lock().unwrap().push((1, Sender::Sync(sender)));
+      queue.lock().unwrap().push((1, sender));
     }
     {
       let (sender, _receiver) = sync::channel(1);
-      queue.lock().unwrap().push((2, Sender::Sync(sender)));
+      queue.lock().unwrap().push((2, sender));
     }
     {
       let (sender, _receiver) = sync::channel(1);
-      queue.lock().unwrap().push((3, Sender::Sync(sender)));
+      queue.lock().unwrap().push((3, sender));
     }
 
     find_sender(&queue, 1);
