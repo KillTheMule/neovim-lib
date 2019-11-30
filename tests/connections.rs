@@ -9,8 +9,7 @@ use neovim_lib::{neovim::Neovim, Handler, RequestHandler};
 use rmpv::Value;
 
 struct NH {
-  pub to_main: sync::Sender<Value>,
-  pub from_main: sync::Receiver<Value>,
+  pub to_main: sync::Sender<(Value, sync::Sender<Value>)>,
 }
 
 #[async_trait]
@@ -35,8 +34,9 @@ impl RequestHandler for NH {
     match name.as_ref() {
       "dummy" => Ok(Value::from("o")),
       "req" => {
-        self.to_main.send(args.pop().unwrap()).await;
-        let ret = self.from_main.recv().await.unwrap();
+        let (sender, receiver) = sync::channel(1);
+        self.to_main.send((args.pop().unwrap(), sender)).await;
+        let ret = receiver.recv().await.unwrap();
         eprintln!("Sending {}", ret.as_str().unwrap());
         Ok(ret)
       }
@@ -57,10 +57,8 @@ fn can_connect_to_child() {
     endfun""#;
 
   let (handler_to_main, main_from_handler) = sync::channel(2);
-  let (main_to_handler, handler_from_main) = sync::channel(10);
   let handler = NH {
     to_main: handler_to_main,
-    from_main: handler_from_main,
   };
 
   let nvim = Neovim::new_child_cmd(
@@ -87,12 +85,11 @@ fn can_connect_to_child() {
   task::spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
 
   task::block_on(async move {
-    while let Some(v) = main_from_handler.recv().await {
+    while let Some((v, c)) = main_from_handler.recv().await {
       let v = v.as_str().unwrap();
       eprintln!("Req {}", v);
 
       let nvim = nvim.clone();
-      let main_to_handler = main_to_handler.clone();
       match v {
         "y" => task::spawn(async move {
           let mut x: String = nvim
@@ -112,12 +109,12 @@ fn can_connect_to_child() {
           x.push_str(nvim.eval("rpcrequest(1,'dummy')").await.unwrap().as_str().unwrap());
           x.push_str(" - ");
           x.push_str(nvim.eval("rpcrequest(1,'req', 'z')").await.unwrap().as_str().unwrap());
-          main_to_handler.send(Value::from(x)).await;
+          c.send(Value::from(x)).await;
         }),
         "z" => task::spawn(async move {
           let x:String =
             nvim.get_vvar("progname").await.unwrap().as_str().unwrap().into();
-          main_to_handler.send(Value::from(x)).await;
+          c.send(Value::from(x)).await;
         }),
         _ => break,
       };
