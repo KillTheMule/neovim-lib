@@ -1,4 +1,5 @@
 // Auto generated {{date}}
+use std::io::Write;
 
 use crate::neovim::*;
 use crate::rpc::*;
@@ -28,7 +29,9 @@ impl {{ etype.name }} {
 
     {% for f in functions if f.ext and f.name.startswith(etype.prefix) %}
     /// since: {{f.since}}
-    pub async fn {{f.name|replace(etype.prefix, '')}}(&self, neovim: &Neovim, {{f.argstring}}) -> Result<{{f.return_type.native_type_ret}}, CallError> {
+    pub async fn {{f.name|replace(etype.prefix, '')}}<W>(&self, neovim: &Neovim<W>, {{f.argstring}}) -> Result<{{f.return_type.native_type_ret}}, CallError>
+    where W: Write + Send + 'static
+    {
         neovim.call("{{f.name}}",
                           call_args![self.code_data.clone()
                           {% if f.parameters|count > 0 %}
@@ -58,7 +61,10 @@ impl <'a> IntoVal<Value> for &'a {{etype.name}} {
 }
 {% endfor %}
 
-impl Neovim {
+impl<W> Requester<W>
+where
+      W: Write + Send + 'static,
+{
     {% for f in functions if not f.ext %}
     pub async fn {{f.name|replace('nvim_', '')}}(&self, {{f.argstring}}) -> Result<{{f.return_type.native_type_ret}}, CallError> {
         self.call("{{f.name}}",

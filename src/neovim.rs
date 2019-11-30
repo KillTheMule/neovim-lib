@@ -1,18 +1,14 @@
 use std::{
-  io::{self, Error, ErrorKind, Stdout},
-  net::TcpStream,
-  path::Path,
-  process::{Child, ChildStdin, Command, Stdio},
+  io::Write,
+  process::Child,
   result,
   thread::JoinHandle,
+  clone::Clone,
 };
-
-#[cfg(unix)]
-use unix_socket::UnixStream;
 
 use crate::{
   callerror::{map_generic_error, CallError},
-  rpc::{handler::Handler, model::IntoVal, Requester},
+  rpc::{model::IntoVal, Requester},
   uioptions::UiAttachOptions,
 };
 
@@ -20,13 +16,14 @@ use async_std::task;
 use rmpv::Value;
 
 /// An active Neovim session.
-pub enum Neovim {
-  Child(Requester<ChildStdin>, JoinHandle<()>, Child),
-  Parent(Requester<Stdout>, JoinHandle<()>),
-  Tcp(Requester<TcpStream>, JoinHandle<()>),
+pub enum Neovim<W> 
+where W: Write + Send + 'static {
+  Child(Requester<W>, JoinHandle<()>, Child),
+  Parent(Requester<W>, JoinHandle<()>),
+  Tcp(Requester<W>, JoinHandle<()>),
 
   #[cfg(unix)]
-  UnixSocket(Requester<UnixStream>, JoinHandle<()>),
+  UnixSocket(Requester<W>, JoinHandle<()>),
 }
 
 macro_rules! call_args {
@@ -41,91 +38,22 @@ macro_rules! call_args {
     }};
 }
 
-impl Neovim {
-  /// Connect to nvim instance via tcp
-  pub fn new_tcp<H>(addr: &str, handler: H) -> io::Result<Neovim>
-  where
-    H: Handler + Send + 'static,
+
+
+impl<W> Neovim<W>
+where W: Write + Send + 'static {
+
+  pub fn requester(&self) -> Requester<W>
   {
-    let stream = TcpStream::connect(addr)?;
-    let read = stream.try_clone()?;
-    let (requester, dispatch_guard) = Requester::new(stream, read, handler);
+    use Neovim::*;
 
-    Ok(Neovim::Tcp(requester, dispatch_guard))
-  }
-
-  #[cfg(unix)]
-  /// Connect to nvim instance via unix socket
-  pub fn new_unix_socket<H, P: AsRef<Path>>(
-    path: P,
-    handler: H,
-  ) -> io::Result<Neovim>
-  where
-    H: Handler + Send + 'static,
-  {
-    let stream = UnixStream::connect(path)?;
-    let read = stream.try_clone()?;
-
-    let (requester, dispatch_guard) = Requester::new(stream, read, handler);
-
-    Ok(Neovim::UnixSocket(requester, dispatch_guard))
-  }
-
-  /// Connect to a Neovim instance by spawning a new one.
-  pub fn new_child<H>(handler: H) -> io::Result<Neovim>
-  where
-    H: Handler + Send + 'static,
-  {
-    if cfg!(target_os = "windows") {
-      Self::new_child_path("nvim.exe", handler)
-    } else {
-      Self::new_child_path("nvim", handler)
+    match self {
+      Child(r, _, _) | Parent(r, _ ) | Tcp(r, _ ) => r.clone(),
+      #[cfg(unix)]
+      UnixSocket(r, _) => r.clone(),
     }
   }
 
-  /// Connect to a Neovim instance by spawning a new one
-  pub fn new_child_path<H, S: AsRef<Path>>(
-    program: S,
-    handler: H,
-  ) -> io::Result<Neovim>
-  where
-    H: Handler + Send + 'static,
-  {
-    Self::new_child_cmd(Command::new(program.as_ref()).arg("--embed"), handler)
-  }
-
-  /// Connect to a Neovim instance by spawning a new one
-  ///
-  /// stdin/stdout settings will be rewrited to `Stdio::piped()`
-  pub fn new_child_cmd<H>(cmd: &mut Command, handler: H) -> io::Result<Neovim>
-  where
-    H: Handler + Send + 'static,
-  {
-    let mut child = cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
-    let stdout = child
-      .stdout
-      .take()
-      .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdout"))?;
-    let stdin = child
-      .stdin
-      .take()
-      .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdin"))?;
-
-    let (requester, dispatch_guard) = Requester::new(stdout, stdin, handler);
-
-    Ok(Neovim::Child(requester, dispatch_guard, child))
-  }
-
-  /// Connect to a Neovim instance that spawned this process over stdin/stdout.
-  pub fn new_parent<H>(handler: H) -> io::Result<Neovim>
-  where
-    H: Handler + Send + 'static,
-  {
-    let (requester, dispatch_guard) =
-      Requester::new(io::stdin(), io::stdout(), handler);
-
-    Ok(Neovim::Parent(requester, dispatch_guard))
-  }
 
   /// Call can be made only after event loop begin processing
   pub async fn call(
@@ -135,11 +63,9 @@ impl Neovim {
   ) -> result::Result<Value, Value> {
     use Neovim::*;
     match self {
-      Child(ref req, _, _) => req.call(method, args).await,
-      Parent(ref req, _) => req.call(method, args).await,
-      Tcp(ref req, _) => req.call(method, args).await,
+      Child(r, _, _) | Parent(r, _) | Tcp(r, _) => r.call(method, args).await,
       #[cfg(unix)]
-      UnixSocket(ref req, _) => req.call(method, args).await,
+      UnixSocket(r, _) => r.call(method, args).await,
     }
   }
 
@@ -164,6 +90,6 @@ impl Neovim {
   /// The quit command is 'qa!' which will make Nvim quit without
   /// saving anything.
   pub fn quit_no_save(&mut self) -> Result<(), CallError> {
-    task::block_on(self.command("qa!"))
+    task::block_on(self.requester().command("qa!"))
   }
 }

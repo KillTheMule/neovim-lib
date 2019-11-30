@@ -18,7 +18,6 @@ use super::model;
 
 type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
 
-#[derive(Clone)]
 pub struct Requester<W>
 where
   W: Write + Send + 'static,
@@ -26,6 +25,19 @@ where
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
   pub(crate) msgid_counter: Arc<AtomicU64>,
+}
+
+impl<W> Clone for Requester<W>
+where
+  W: Write + Send + 'static,
+{
+  fn clone(&self) -> Self {
+    Requester {
+      writer: self.writer.clone(),
+      queue: self.queue.clone(),
+      msgid_counter: self.msgid_counter.clone()
+    }
+  }
 }
 
 impl<W> Requester<W>
