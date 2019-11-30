@@ -4,7 +4,7 @@ extern crate tempdir;
 
 use async_std::task;
 use neovim_lib::DefaultHandler;
-use neovim_lib::{new_child_path, new_child, new_tcp, new_unix_socket};
+use neovim_lib::create;
 
 #[cfg(unix)]
 use std::process::Command;
@@ -16,9 +16,9 @@ use tempdir::TempDir;
 fn start_stop_test() {
   let handler = DefaultHandler{};
   let nvim = if cfg!(target_os = "windows") {
-    new_child_path("E:\\Neovim\\bin\\nvim.exe", handler).unwrap()
+    create::new_child_path("E:\\Neovim\\bin\\nvim.exe", handler).unwrap()
   } else {
-    new_child(handler).unwrap()
+    create::new_child(handler).unwrap()
   };
 
   println!("{:?}", task::block_on(nvim.requester().get_api_info()).unwrap());
@@ -28,7 +28,7 @@ fn start_stop_test() {
 #[test]
 fn remote_test() {
   let handler = DefaultHandler{};
-  let nvim = new_tcp("127.0.0.1:6666", handler).unwrap();
+  let nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
   task::block_on(nvim.requester().command("echo \"Test\"")).unwrap();
 }
 
@@ -36,7 +36,7 @@ fn remote_test() {
 #[test]
 fn edit_test() {
   let handler = DefaultHandler{};
-  let mut nvim = new_tcp("127.0.0.1:6666", handler).unwrap();
+  let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
   let buffers = task::block_on(nvim.requester().list_bufs()).unwrap();
   task::block_on(buffers[0].set_lines(
     &mut nvim,
@@ -90,7 +90,7 @@ fn can_connect_via_unix_socket() {
   }
 
   let handler = DefaultHandler{};
-  let nvim = new_unix_socket(&socket_path, handler).expect(&format!(
+  let nvim = create::new_unix_socket(&socket_path, handler).expect(&format!(
     "Unable to connect to neovim's unix socket at {:?}",
     &socket_path
   ));

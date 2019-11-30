@@ -3,7 +3,7 @@ extern crate rmp;
 
 use async_std::{sync, task};
 use async_trait::async_trait;
-use neovim_lib::{Handler, RequestHandler, new_child_cmd};
+use neovim_lib::{Handler, RequestHandler, create};
 use rmpv::Value;
 
 struct NH {
@@ -63,7 +63,7 @@ fn can_connect_to_child() {
     to_main: handler_to_main,
   };
 
-  let nvim = new_child_cmd(
+  let nvim = create::new_child_cmd(
     Command::new(nvimpath)
       .args(&[
         "-u",

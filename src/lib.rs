@@ -4,11 +4,11 @@
 //! # Examples
 //! ## Simple use case
 //! ```no_run
-//! use neovim_lib::{new_tcp, DefaultHandler};
+//! use neovim_lib::{create, DefaultHandler};
 //! use async_std::task;
 //!
 //! let mut handler = DefaultHandler{};
-//! let mut nvim = new_tcp("127.0.0.1:6666", handler).unwrap();
+//! let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
 //!
 //! let buffers = task::block_on(nvim.requester().list_bufs()).unwrap();
 //! task::block_on(buffers[0].set_lines(&mut nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
@@ -19,12 +19,12 @@
 //! ## Process notify events from neovim
 //!
 //! ```no_run
-//! use neovim_lib::{new_tcp, ChannelHandler, DefaultHandler};
+//! use neovim_lib::{create, ChannelHandler, DefaultHandler};
 //! use async_std::task;
 //!
 //! let mut handler = DefaultHandler{};
 //! let (mut chandler, mut receiver) = ChannelHandler::new(handler);
-//! let mut nvim = new_tcp("127.0.0.1:6666", chandler).unwrap();
+//! let mut nvim = create::new_tcp("127.0.0.1:6666", chandler).unwrap();
 //!
 //! let (event_name, args) = task::block_on(receiver.recv()).unwrap();
 //! ```
@@ -50,7 +50,6 @@ pub use crate::{
   rpc::handler::{ChannelHandler, DefaultHandler},
   uioptions::{UiAttachOptions, UiOption},
   rpc::Requester,
-  create::*
 };
 
 pub use crate::rpc::handler::{Handler, RequestHandler};
