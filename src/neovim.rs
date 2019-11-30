@@ -1,8 +1,8 @@
 use std::{
-  io::{self, Error, ErrorKind, Stdin, Stdout},
+  io::{self, Error, ErrorKind, Stdout},
   net::TcpStream,
   path::Path,
-  process::{Child, ChildStdin, ChildStdout, Command, Stdio},
+  process::{Child, ChildStdin, Command, Stdio},
   result,
   thread::JoinHandle,
 };
@@ -12,7 +12,7 @@ use unix_socket::UnixStream;
 
 use crate::{
   callerror::{map_generic_error, CallError},
-  rpc::{handler::Handler, model::IntoVal, Client},
+  rpc::{handler::Handler, model::IntoVal, Requester},
   uioptions::UiAttachOptions,
 };
 
@@ -20,9 +20,13 @@ use async_std::task;
 use rmpv::Value;
 
 /// An active Neovim session.
-pub struct Neovim {
-  pub connection: ClientConnection,
-  pub dispatch_guard: JoinHandle<()>,
+pub enum Neovim {
+  Child(Requester<ChildStdin>, JoinHandle<()>, Child),
+  Parent(Requester<Stdout>, JoinHandle<()>),
+  Tcp(Requester<TcpStream>, JoinHandle<()>),
+
+  #[cfg(unix)]
+  UnixSocket(Requester<UnixStream>, JoinHandle<()>),
 }
 
 macro_rules! call_args {
@@ -45,13 +49,9 @@ impl Neovim {
   {
     let stream = TcpStream::connect(addr)?;
     let read = stream.try_clone()?;
-    let (client, dispatch_guard) = Client::new(stream, read, handler);
-    let connection = ClientConnection::Tcp(client);
+    let (requester, dispatch_guard) = Requester::new(stream, read, handler);
 
-    Ok(Neovim {
-      connection,
-      dispatch_guard,
-    })
+    Ok(Neovim::Tcp(requester, dispatch_guard))
   }
 
   #[cfg(unix)]
@@ -66,13 +66,9 @@ impl Neovim {
     let stream = UnixStream::connect(path)?;
     let read = stream.try_clone()?;
 
-    let (client, dispatch_guard) = Client::new(stream, read, handler);
-    let connection = ClientConnection::UnixSocket(client);
+    let (requester, dispatch_guard) = Requester::new(stream, read, handler);
 
-    Ok(Neovim {
-      connection,
-      dispatch_guard,
-    })
+    Ok(Neovim::UnixSocket(requester, dispatch_guard))
   }
 
   /// Connect to a Neovim instance by spawning a new one.
@@ -115,13 +111,9 @@ impl Neovim {
       .take()
       .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdin"))?;
 
-    let (client, dispatch_guard) = Client::new(stdout, stdin, handler);
-    let connection = ClientConnection::Child(client, child);
+    let (requester, dispatch_guard) = Requester::new(stdout, stdin, handler);
 
-    Ok(Neovim {
-      connection,
-      dispatch_guard,
-    })
+    Ok(Neovim::Child(requester, dispatch_guard, child))
   }
 
   /// Connect to a Neovim instance that spawned this process over stdin/stdout.
@@ -129,13 +121,10 @@ impl Neovim {
   where
     H: Handler + Send + 'static,
   {
-    let (client, dispatch_guard) = Client::new(io::stdin(), io::stdout(), handler);
-    let connection = ClientConnection::Parent(client);
+    let (requester, dispatch_guard) =
+      Requester::new(io::stdin(), io::stdout(), handler);
 
-    Ok(Neovim {
-      connection,
-      dispatch_guard,
-    })
+    Ok(Neovim::Parent(requester, dispatch_guard))
   }
 
   /// Call can be made only after event loop begin processing
@@ -144,19 +133,13 @@ impl Neovim {
     method: &str,
     args: Vec<Value>,
   ) -> result::Result<Value, Value> {
-    match self.connection {
-      ClientConnection::Child(ref client, _) => {
-        client.call(method, args).await
-      }
-      ClientConnection::Parent(ref client) => {
-        client.call(method, args).await
-      }
-      ClientConnection::Tcp(ref client) => client.call(method, args).await,
-
+    use Neovim::*;
+    match self {
+      Child(ref req, _, _) => req.call(method, args).await,
+      Parent(ref req, _) => req.call(method, args).await,
+      Tcp(ref req, _) => req.call(method, args).await,
       #[cfg(unix)]
-      ClientConnection::UnixSocket(ref client) => {
-        client.call(method, args).await
-      }
+      UnixSocket(ref req, _) => req.call(method, args).await,
     }
   }
 
@@ -183,13 +166,4 @@ impl Neovim {
   pub fn quit_no_save(&mut self) -> Result<(), CallError> {
     task::block_on(self.command("qa!"))
   }
-}
-
-pub enum ClientConnection {
-  Child(Client<ChildStdout, ChildStdin>, Child),
-  Parent(Client<Stdin, Stdout>),
-  Tcp(Client<TcpStream, TcpStream>),
-
-  #[cfg(unix)]
-  UnixSocket(Client<UnixStream, UnixStream>),
 }

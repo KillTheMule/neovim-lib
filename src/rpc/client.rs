@@ -1,8 +1,10 @@
 use std::{
   error::Error,
   io::{BufReader, BufWriter, Read, Write},
-  marker::PhantomData,
-  sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}},
+  sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc, Mutex,
+  },
   thread,
   thread::JoinHandle,
 };
@@ -17,24 +19,22 @@ use super::model;
 type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
 
 #[derive(Clone)]
-pub struct Client<R, W>
+pub struct Requester<W>
 where
-  R: Read + Send + 'static,
   W: Write + Send + 'static,
 {
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
   pub(crate) msgid_counter: Arc<AtomicU64>,
-  _p: PhantomData<R>,
 }
 
-impl<R, W> Client<R, W>
+impl<W> Requester<W>
 where
-  R: Read + Send + 'static,
   W: Write + Send + 'static,
 {
-  pub fn new<H>(reader: R, writer: W, handler: H) -> (Self, JoinHandle<()>)
+  pub fn new<H, R>(reader: R, writer: W, handler: H) -> (Self, JoinHandle<()>)
   where
+    R: Read + Send + 'static,
     H: Handler + Send + 'static,
   {
     let queue = Arc::new(Mutex::new(Vec::new()));
@@ -47,12 +47,14 @@ where
     let dispatch_guard =
       thread::spawn(move || Self::io_loop(handler, reader, queue_t, writer_t));
 
-    (Client {
-      writer,
-      msgid_counter: Arc::new(AtomicU64::new(0)),
-      queue,
-      _p: PhantomData,
-    }, dispatch_guard)
+    (
+      Requester {
+        writer,
+        msgid_counter: Arc::new(AtomicU64::new(0)),
+        queue,
+      },
+      dispatch_guard,
+    )
   }
 
   fn send_msg(
@@ -101,13 +103,14 @@ where
     });
   }
 
-  fn io_loop<H>(
+  fn io_loop<H, R>(
     handler: H,
     mut reader: BufReader<R>,
     queue: Queue,
     writer: Arc<Mutex<BufWriter<W>>>,
   ) where
     H: Handler + Sync + 'static,
+    R: Read + Send + 'static,
   {
     let handler = Arc::new(handler);
     loop {
