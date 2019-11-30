@@ -4,7 +4,6 @@ use std::{
   path::Path,
   process::{Child, ChildStdin, ChildStdout, Command, Stdio},
   result,
-  time::Duration,
   thread::JoinHandle,
 };
 
@@ -23,7 +22,6 @@ use rmpv::Value;
 /// An active Neovim session.
 pub struct Neovim {
   pub connection: ClientConnection,
-  pub timeout: Option<Duration>,
   pub dispatch_guard: JoinHandle<()>,
 }
 
@@ -52,7 +50,6 @@ impl Neovim {
 
     Ok(Neovim {
       connection,
-      timeout: Some(Duration::new(5, 0)),
       dispatch_guard,
     })
   }
@@ -74,7 +71,6 @@ impl Neovim {
 
     Ok(Neovim {
       connection,
-      timeout: Some(Duration::new(5, 0)),
       dispatch_guard,
     })
   }
@@ -124,7 +120,6 @@ impl Neovim {
 
     Ok(Neovim {
       connection,
-      timeout: Some(Duration::new(5, 0)),
       dispatch_guard,
     })
   }
@@ -139,18 +134,8 @@ impl Neovim {
 
     Ok(Neovim {
       connection,
-      timeout: Some(Duration::new(5, 0)),
       dispatch_guard,
     })
-  }
-
-  /// Set call timeout
-  pub fn set_timeout(&mut self, timeout: Duration) {
-    self.timeout = Some(timeout);
-  }
-
-  pub fn set_infinity_timeout(&mut self) {
-    self.timeout = None;
   }
 
   /// Call can be made only after event loop begin processing
