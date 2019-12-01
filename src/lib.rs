@@ -7,7 +7,7 @@
 //! use neovim_lib::{create, DefaultHandler};
 //! use async_std::task;
 //!
-//! let mut handler = DefaultHandler{};
+//! let mut handler = DefaultHandler::new();
 //! let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
 //!
 //! let buffers = task::block_on(nvim.list_bufs()).unwrap();
@@ -22,7 +22,7 @@
 //! use neovim_lib::{create, ChannelHandler, DefaultHandler};
 //! use async_std::task;
 //!
-//! let mut handler = DefaultHandler{};
+//! let mut handler = DefaultHandler::new();
 //! let (mut chandler, mut receiver) = ChannelHandler::new(handler);
 //! let mut nvim = create::new_tcp("127.0.0.1:6666", chandler).unwrap();
 //!

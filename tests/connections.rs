@@ -3,8 +3,10 @@ extern crate rmp;
 
 use async_std::{sync, task};
 use async_trait::async_trait;
-use neovim_lib::{Handler, RequestHandler, create};
+use neovim_lib::{Handler, RequestHandler, create, Requester};
 use rmpv::Value;
+
+use std::process::ChildStdin;
 
 struct NH {
   pub to_main: sync::Sender<(Value, sync::Sender<Value>)>,
@@ -12,7 +14,7 @@ struct NH {
 
 #[async_trait]
 impl Handler for NH {
-  async fn handle_notify(&self, name: String, args: Vec<Value>) {
+  async fn handle_notify(&self, name: String, args: Vec<Value>, _req: Requester<ChildStdin>) {
     eprintln!("Notification: {}", name);
     match name.as_ref() {
       "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
@@ -27,10 +29,13 @@ impl Handler for NH {
 
 #[async_trait]
 impl RequestHandler for NH {
+  type Writer = ChildStdin;
+
   async fn handle_request(
     &self,
     name: String,
     mut args: Vec<Value>,
+    _req: Requester<ChildStdin>,
   ) -> Result<Value, Value> {
     eprintln!("Request: {}", name);
     match name.as_ref() {
