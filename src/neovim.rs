@@ -1,5 +1,5 @@
 use std::{
-  clone::Clone, io::Write, process::Child, result, thread::JoinHandle, thread,
+  clone::Clone, io::Write, process::Child, result, thread, thread::JoinHandle,
 };
 
 use crate::{

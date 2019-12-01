@@ -14,7 +14,7 @@ use async_std::{sync, task};
 use super::handler::Handler;
 use rmpv::Value;
 
-use super::{model, handler::RequestHandler};
+use super::{handler::RequestHandler, model};
 
 type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
 
@@ -44,7 +44,11 @@ impl<W> Requester<W>
 where
   W: Write + Send + 'static,
 {
-  pub fn new<H, R>(reader: R, writer: <H as RequestHandler>::Writer, handler: H) -> (Requester<<H as RequestHandler>::Writer>, JoinHandle<()>)
+  pub fn new<H, R>(
+    reader: R,
+    writer: <H as RequestHandler>::Writer,
+    handler: H,
+  ) -> (Requester<<H as RequestHandler>::Writer>, JoinHandle<()>)
   where
     R: Read + Send + 'static,
     H: Handler + Send + 'static,
@@ -52,20 +56,17 @@ where
     let reader = BufReader::new(reader);
 
     let req = Requester {
-        writer: Arc::new(Mutex::new(BufWriter::new(writer))),
-        msgid_counter: Arc::new(AtomicU64::new(0)),
-        queue: Arc::new(Mutex::new(Vec::new())),
-      };
+      writer: Arc::new(Mutex::new(BufWriter::new(writer))),
+      msgid_counter: Arc::new(AtomicU64::new(0)),
+      queue: Arc::new(Mutex::new(Vec::new())),
+    };
 
     let req_t = req.clone();
 
     let dispatch_guard =
       thread::spawn(move || Self::io_loop(handler, reader, req_t));
 
-    (
-      req,
-      dispatch_guard
-    )
+    (req, dispatch_guard)
   }
 
   fn send_msg(
@@ -143,21 +144,22 @@ where
           let handler = handler.clone();
           task::spawn(async move {
             let req_t = req.clone();
-            let response = match handler.handle_request(method, params, req_t).await {
-              Ok(result) => {
-                let r = model::RpcMessage::RpcResponse {
+            let response =
+              match handler.handle_request(method, params, req_t).await {
+                Ok(result) => {
+                  let r = model::RpcMessage::RpcResponse {
+                    msgid,
+                    result,
+                    error: Value::Nil,
+                  };
+                  r
+                }
+                Err(error) => model::RpcMessage::RpcResponse {
                   msgid,
-                  result,
-                  error: Value::Nil,
-                };
-                r
-              }
-              Err(error) => model::RpcMessage::RpcResponse {
-                msgid,
-                result: Value::Nil,
-                error,
-              },
-            };
+                  result: Value::Nil,
+                  error,
+                },
+              };
 
             let writer = &mut *(req.writer).lock().unwrap();
             model::encode(writer, response)
@@ -183,9 +185,9 @@ where
         model::RpcMessage::RpcNotification { method, params } => {
           let handler = handler.clone();
           let req = req.clone();
-          task::spawn(
-            async move { handler.handle_notify(method, params, req).await },
-          );
+          task::spawn(async move {
+            handler.handle_notify(method, params, req).await
+          });
         }
       };
     }

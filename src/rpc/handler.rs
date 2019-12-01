@@ -22,37 +22,38 @@ pub trait RequestHandler: Sync + Send {
 
 #[async_trait]
 pub trait Handler: RequestHandler {
-  async fn handle_notify(&self, _name: String, _args: Vec<Value>, _req:
-    Requester<<Self as RequestHandler>::Writer>)
-    {}
+  async fn handle_notify(
+    &self,
+    _name: String,
+    _args: Vec<Value>,
+    _req: Requester<<Self as RequestHandler>::Writer>,
+  ) {
+  }
 }
 
 pub struct DefaultHandler<Q>
 where
-    Q: Write + Send + Sync + 'static,
+  Q: Write + Send + Sync + 'static,
 {
-  _q: Arc<PhantomData<Q>>
+  _q: Arc<PhantomData<Q>>,
 }
 
-impl<Q> RequestHandler for DefaultHandler<Q> 
+impl<Q> RequestHandler for DefaultHandler<Q>
 where
-    Q: Write + Send + Sync + 'static,
-  {
+  Q: Write + Send + Sync + 'static,
+{
   type Writer = Q;
 }
 
-impl<Q> Handler for DefaultHandler<Q>
-where
-    Q: Write + Send + Sync + 'static,
-  {}
+impl<Q> Handler for DefaultHandler<Q> where Q: Write + Send + Sync + 'static {}
 
 impl<Q> DefaultHandler<Q>
 where
-    Q: Write + Send + Sync + 'static,
+  Q: Write + Send + Sync + 'static,
 {
   pub fn new() -> DefaultHandler<Q> {
     DefaultHandler {
-      _q: Arc::new(PhantomData)
+      _q: Arc::new(PhantomData),
     }
   }
 }
@@ -64,8 +65,12 @@ pub struct ChannelHandler<H: RequestHandler> {
 
 #[async_trait]
 impl<H: RequestHandler> Handler for ChannelHandler<H> {
-  async fn handle_notify(&self, name: String, args: Vec<Value>, _req:
-    Requester<H::Writer>) {
+  async fn handle_notify(
+    &self,
+    name: String,
+    args: Vec<Value>,
+    _req: Requester<H::Writer>,
+  ) {
     self.sender.send((name.to_owned(), args)).await
   }
 }
@@ -80,7 +85,10 @@ impl<H: RequestHandler> RequestHandler for ChannelHandler<H> {
     args: Vec<Value>,
     req: Requester<<H as RequestHandler>::Writer>,
   ) -> Result<Value, Value> {
-    (&*self).request_handler.handle_request(name, args, req).await
+    (&*self)
+      .request_handler
+      .handle_request(name, args, req)
+      .await
   }
 }
 

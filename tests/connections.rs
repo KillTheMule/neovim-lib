@@ -3,12 +3,12 @@ extern crate rmp;
 
 use async_std::{sync, task};
 use async_trait::async_trait;
-use neovim_lib::{Handler, RequestHandler, create, Requester};
+use neovim_lib::{create, Handler, RequestHandler, Requester};
 use rmpv::Value;
 
-use std::process::{ChildStdin, self};
 #[cfg(unix)]
 use std::process::Command;
+use std::process::{self, ChildStdin};
 
 struct NH {
   pub to_main: sync::Sender<(Value, sync::Sender<Value>)>,
@@ -16,14 +16,19 @@ struct NH {
 
 #[async_trait]
 impl Handler for NH {
-  async fn handle_notify(&self, name: String, args: Vec<Value>, _req: Requester<ChildStdin>) {
+  async fn handle_notify(
+    &self,
+    name: String,
+    args: Vec<Value>,
+    _req: Requester<ChildStdin>,
+  ) {
     eprintln!("Notification: {}", name);
     match name.as_ref() {
       "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
       "quit" => {
-          let (sender, _receiver) = sync::channel(1);
-          self.to_main.send((Value::from("quit"), sender)).await;
-        }
+        let (sender, _receiver) = sync::channel(1);
+        self.to_main.send((Value::from("quit"), sender)).await;
+      }
       _ => {}
     };
   }
@@ -53,7 +58,6 @@ impl RequestHandler for NH {
     }
   }
 }
-
 
 #[cfg(unix)]
 #[test]
@@ -112,15 +116,34 @@ fn can_connect_to_child_1() {
           x.push_str(" - ");
           x.push_str(nvim.get_var("oogle").await.unwrap().as_str().unwrap());
           x.push_str(" - ");
-          x.push_str(nvim.eval("rpcrequest(1,'dummy')").await.unwrap().as_str().unwrap());
+          x.push_str(
+            nvim
+              .eval("rpcrequest(1,'dummy')")
+              .await
+              .unwrap()
+              .as_str()
+              .unwrap(),
+          );
           x.push_str(" - ");
-          x.push_str(nvim.eval("rpcrequest(1,'req', 'z')").await.unwrap().as_str().unwrap());
+          x.push_str(
+            nvim
+              .eval("rpcrequest(1,'req', 'z')")
+              .await
+              .unwrap()
+              .as_str()
+              .unwrap(),
+          );
           c.send(Value::from(x)).await;
           nvim.command("call rpcnotify(1, 'quit')").await.unwrap();
         }),
         "z" => task::spawn(async move {
-          let x:String =
-            nvim.get_vvar("progname").await.unwrap().as_str().unwrap().into();
+          let x: String = nvim
+            .get_vvar("progname")
+            .await
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .into();
           c.send(Value::from(x)).await;
         }),
         _ => break,
@@ -130,18 +153,22 @@ fn can_connect_to_child_1() {
   eprintln!("Quitting");
 }
 
-struct NH2 {
-}
+struct NH2 {}
 
 #[async_trait]
 impl Handler for NH2 {
-  async fn handle_notify(&self, name: String, args: Vec<Value>, _req: Requester<ChildStdin>) {
+  async fn handle_notify(
+    &self,
+    name: String,
+    args: Vec<Value>,
+    _req: Requester<ChildStdin>,
+  ) {
     eprintln!("Notification: {}", name);
     match name.as_ref() {
       "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
       "quit" => {
-          process::exit(0);
-        }
+        process::exit(0);
+      }
       _ => {}
     };
   }
@@ -182,27 +209,41 @@ impl RequestHandler for NH2 {
             x.push_str(" - ");
             x.push_str(req.get_var("oogle").await.unwrap().as_str().unwrap());
             x.push_str(" - ");
-            x.push_str(req.eval("rpcrequest(1,'dummy')").await.unwrap().as_str().unwrap());
+            x.push_str(
+              req
+                .eval("rpcrequest(1,'dummy')")
+                .await
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            );
             x.push_str(" - ");
-            x.push_str(req.eval("rpcrequest(1,'req', 'z')").await.unwrap().as_str().unwrap());
+            x.push_str(
+              req
+                .eval("rpcrequest(1,'req', 'z')")
+                .await
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            );
             Ok(Value::from(x))
-          },
-          "z" => {
-            let x:String =
-              req.get_vvar("progname").await.unwrap().as_str().unwrap().into();
-            Ok(Value::from(x))
-          },
-          &_ => {
-            Err(Value::from("wrong argument to req"))
           }
+          "z" => {
+            let x: String = req
+              .get_vvar("progname")
+              .await
+              .unwrap()
+              .as_str()
+              .unwrap()
+              .into();
+            Ok(Value::from(x))
+          }
+          &_ => Err(Value::from("wrong argument to req")),
         }
-      },
-      &_ => {
-        Err(Value::from("wrong method name for request"))
       }
+      &_ => Err(Value::from("wrong method name for request")),
     }
   }
-
 }
 
 #[cfg(unix)]
@@ -216,8 +257,7 @@ fn can_connect_to_child_2() {
       call rpcnotify(1, 'quit') 
     endfun""#;
 
-  let handler = NH2 {
-  };
+  let handler = NH2 {};
 
   let nvim = create::new_child_cmd(
     Command::new(nvimpath)

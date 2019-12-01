@@ -17,7 +17,8 @@ where
 {
   let stream = TcpStream::connect(addr)?;
   let read = stream.try_clone()?;
-  let (requester, dispatch_guard) = Requester::<TcpStream>::new(stream, read, handler);
+  let (requester, dispatch_guard) =
+    Requester::<TcpStream>::new(stream, read, handler);
 
   Ok(Neovim::Tcp(requester, dispatch_guard))
 }
@@ -34,7 +35,8 @@ where
   let stream = UnixStream::connect(path)?;
   let read = stream.try_clone()?;
 
-  let (requester, dispatch_guard) = Requester::<UnixStream>::new(stream, read, handler);
+  let (requester, dispatch_guard) =
+    Requester::<UnixStream>::new(stream, read, handler);
 
   Ok(Neovim::UnixSocket(requester, dispatch_guard))
 }
@@ -82,7 +84,8 @@ where
     .take()
     .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdin"))?;
 
-  let (requester, dispatch_guard) = Requester::<ChildStdin>::new(stdout, stdin, handler);
+  let (requester, dispatch_guard) =
+    Requester::<ChildStdin>::new(stdout, stdin, handler);
 
   Ok(Neovim::Child(requester, dispatch_guard, child))
 }

@@ -1,9 +1,9 @@
-mod requester;
 pub mod handler;
 pub mod model;
+mod requester;
 
 pub use self::{
-  requester::Requester,
   model::{FromVal, IntoVal, RpcMessage},
+  requester::Requester,
 };
 pub use rmpv::Value;
