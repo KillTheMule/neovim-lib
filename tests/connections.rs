@@ -6,6 +6,8 @@ use async_trait::async_trait;
 use neovim_lib::{create, Handler, Requester};
 use rmpv::Value;
 
+const NVIMPATH: &str = "neovim/build/bin/nvim";
+
 #[cfg(unix)]
 use std::process::Command;
 use std::process::{self, ChildStdin};
@@ -59,7 +61,6 @@ impl Handler for NH {
 #[cfg(unix)]
 #[test]
 fn can_connect_to_child_1() {
-  let nvimpath = "/home/pips/Devel/neovim/neovim/build/bin/nvim";
   let rs = r#"exe ":fun M(timer) 
       call rpcrequest(1, 'req', 'y') 
     endfun""#;
@@ -70,7 +71,7 @@ fn can_connect_to_child_1() {
   };
 
   let (nvim, fut) = create::new_child_cmd(
-    Command::new(nvimpath)
+    Command::new(NVIMPATH)
       .args(&[
         "-u",
         "NONE",
@@ -81,7 +82,6 @@ fn can_connect_to_child_1() {
         "-c",
         ":let timer = timer_start(500, 'M')",
       ])
-      .env("VIMRUNTIME", "/home/pips/Devel/neovim/neovim/runtime")
       .env("NVIM_LOG_FILE", "nvimlog"),
     handler,
   )
@@ -245,7 +245,6 @@ impl Handler for NH2 {
 #[cfg(unix)]
 #[test]
 fn can_connect_to_child_2() {
-  let nvimpath = "/home/pips/Devel/neovim/neovim/build/bin/nvim";
   let rs = r#"exe ":fun M(timer) 
       call rpcrequest(1, 'req', 'y') 
     endfun""#;
@@ -256,7 +255,7 @@ fn can_connect_to_child_2() {
   let handler = NH2 {};
 
   let (nvim, fut) = create::new_child_cmd(
-    Command::new(nvimpath)
+    Command::new(NVIMPATH)
       .args(&[
         "-u",
         "NONE",
@@ -271,7 +270,6 @@ fn can_connect_to_child_2() {
         "-c",
         ":let timer = timer_start(1500, 'N')",
       ])
-      .env("VIMRUNTIME", "/home/pips/Devel/neovim/neovim/runtime")
       .env("NVIM_LOG_FILE", "nvimlog"),
     handler,
   )
