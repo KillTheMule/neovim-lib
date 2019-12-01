@@ -1,13 +1,12 @@
 use std::{io::Write, marker::PhantomData, sync::Arc};
 
-use async_std::sync;
 use async_trait::async_trait;
 use rmpv::Value;
 
 use crate::Requester;
 
 #[async_trait]
-pub trait RequestHandler: Sync + Send {
+pub trait Handler: Sync + Send {
   type Writer: Write + Send + 'static;
 
   async fn handle_request(
@@ -18,15 +17,12 @@ pub trait RequestHandler: Sync + Send {
   ) -> Result<Value, Value> {
     Err(Value::from("Not implemented"))
   }
-}
 
-#[async_trait]
-pub trait Handler: RequestHandler {
   async fn handle_notify(
     &self,
     _name: String,
     _args: Vec<Value>,
-    _req: Requester<<Self as RequestHandler>::Writer>,
+    _req: Requester<<Self as Handler>::Writer>,
   ) {
   }
 }
@@ -38,14 +34,18 @@ where
   _q: Arc<PhantomData<Q>>,
 }
 
-impl<Q> RequestHandler for DefaultHandler<Q>
+/*
+impl<Q> Handler for DefaultHandler<Q>
 where
   Q: Write + Send + Sync + 'static,
 {
   type Writer = Q;
 }
+*/
 
-impl<Q> Handler for DefaultHandler<Q> where Q: Write + Send + Sync + 'static {}
+impl<Q> Handler for DefaultHandler<Q> where Q: Write + Send + Sync + 'static {
+  type Writer = Q;
+}
 
 impl<Q> DefaultHandler<Q>
 where
@@ -58,13 +58,14 @@ where
   }
 }
 
-pub struct ChannelHandler<H: RequestHandler> {
+/*
+pub struct ChannelHandler<H: Handler> {
   sender: sync::Sender<(String, Vec<Value>)>,
   request_handler: H,
 }
 
 #[async_trait]
-impl<H: RequestHandler> Handler for ChannelHandler<H> {
+impl<H: Handler> Handler for ChannelHandler<H> {
   async fn handle_notify(
     &self,
     name: String,
@@ -76,14 +77,14 @@ impl<H: RequestHandler> Handler for ChannelHandler<H> {
 }
 
 #[async_trait]
-impl<H: RequestHandler> RequestHandler for ChannelHandler<H> {
+impl<H: Handler> Handler for ChannelHandler<H> {
   type Writer = H::Writer;
 
   async fn handle_request(
     &self,
     name: String,
     args: Vec<Value>,
-    req: Requester<<H as RequestHandler>::Writer>,
+    req: Requester<<H as Handler>::Writer>,
   ) -> Result<Value, Value> {
     (&*self)
       .request_handler
@@ -92,7 +93,7 @@ impl<H: RequestHandler> RequestHandler for ChannelHandler<H> {
   }
 }
 
-impl<H: RequestHandler> ChannelHandler<H> {
+impl<H: Handler> ChannelHandler<H> {
   pub fn new(
     request_handler: H,
   ) -> (Self, sync::Receiver<(String, Vec<Value>)>) {
@@ -106,3 +107,4 @@ impl<H: RequestHandler> ChannelHandler<H> {
     )
   }
 }
+*/

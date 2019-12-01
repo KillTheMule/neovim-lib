@@ -11,10 +11,8 @@ use std::{
 
 use async_std::{sync, task};
 
-use super::handler::Handler;
+use crate::rpc::{model, handler::Handler};
 use rmpv::Value;
-
-use super::{handler::RequestHandler, model};
 
 type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
 
@@ -46,9 +44,9 @@ where
 {
   pub fn new<H, R>(
     reader: R,
-    writer: <H as RequestHandler>::Writer,
+    writer: <H as Handler>::Writer,
     handler: H,
-  ) -> (Requester<<H as RequestHandler>::Writer>, JoinHandle<()>)
+  ) -> (Requester<<H as Handler>::Writer>, JoinHandle<()>)
   where
     R: Read + Send + 'static,
     H: Handler + Send + 'static,
@@ -118,7 +116,7 @@ where
   fn io_loop<H, R>(
     handler: H,
     mut reader: BufReader<R>,
-    req: Requester<<H as RequestHandler>::Writer>,
+    req: Requester<<H as Handler>::Writer>,
   ) where
     H: Handler + Sync + 'static,
     R: Read + Send + 'static,

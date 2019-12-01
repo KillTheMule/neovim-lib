@@ -19,12 +19,30 @@
 //! ## Process notify events from neovim
 //!
 //! ```no_run
-//! use neovim_lib::{create, ChannelHandler, DefaultHandler};
-//! use async_std::task;
+//! use neovim_lib::{create, Handler, Value, Requester};
+//! use async_std::{task, sync};
+//! use async_trait::async_trait;
+//! use std::net::TcpStream;
 //!
-//! let mut handler = DefaultHandler::new();
-//! let (mut chandler, mut receiver) = ChannelHandler::new(handler);
-//! let mut nvim = create::new_tcp("127.0.0.1:6666", chandler).unwrap();
+//! struct MyHandler(sync::Sender<(String, Vec<Value>)>);
+//!
+//! #[async_trait]
+//! impl Handler for MyHandler {
+//!   type Writer = TcpStream;
+//!
+//!   async fn handle_notify(
+//!     &self,
+//!     name: String,
+//!     args: Vec<Value>,
+//!     _: Requester<TcpStream>
+//!   ) {
+//!     self.0.send((name, args)).await;
+//!   }
+//! }
+//!
+//! let (mut sender, mut receiver) = sync::channel(1);
+//! let mut handler = MyHandler(sender);
+//! let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
 //!
 //! let (event_name, args) = task::block_on(receiver.recv()).unwrap();
 //! ```
@@ -47,12 +65,9 @@ pub mod uioptions;
 pub use crate::{
   callerror::CallError,
   neovim::Neovim,
-  rpc::{
-    handler::{ChannelHandler, DefaultHandler},
-    Requester,
-  },
+  rpc::{handler::DefaultHandler, Requester},
   uioptions::{UiAttachOptions, UiOption},
 };
 
-pub use crate::rpc::handler::{Handler, RequestHandler};
+pub use crate::rpc::handler::Handler;
 pub use rmpv::{Integer, Utf8String, Value};

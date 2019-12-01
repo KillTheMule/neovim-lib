@@ -3,7 +3,7 @@ extern crate rmp;
 
 use async_std::{sync, task};
 use async_trait::async_trait;
-use neovim_lib::{create, Handler, RequestHandler, Requester};
+use neovim_lib::{create, Handler, Requester};
 use rmpv::Value;
 
 #[cfg(unix)]
@@ -16,26 +16,6 @@ struct NH {
 
 #[async_trait]
 impl Handler for NH {
-  async fn handle_notify(
-    &self,
-    name: String,
-    args: Vec<Value>,
-    _req: Requester<ChildStdin>,
-  ) {
-    eprintln!("Notification: {}", name);
-    match name.as_ref() {
-      "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
-      "quit" => {
-        let (sender, _receiver) = sync::channel(1);
-        self.to_main.send((Value::from("quit"), sender)).await;
-      }
-      _ => {}
-    };
-  }
-}
-
-#[async_trait]
-impl RequestHandler for NH {
   type Writer = ChildStdin;
 
   async fn handle_request(
@@ -56,6 +36,23 @@ impl RequestHandler for NH {
       }
       _ => Ok(Value::from(2)),
     }
+  }
+
+  async fn handle_notify(
+    &self,
+    name: String,
+    args: Vec<Value>,
+    _req: Requester<ChildStdin>,
+  ) {
+    eprintln!("Notification: {}", name);
+    match name.as_ref() {
+      "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
+      "quit" => {
+        let (sender, _receiver) = sync::channel(1);
+        self.to_main.send((Value::from("quit"), sender)).await;
+      }
+      _ => {}
+    };
   }
 }
 
@@ -157,25 +154,6 @@ struct NH2 {}
 
 #[async_trait]
 impl Handler for NH2 {
-  async fn handle_notify(
-    &self,
-    name: String,
-    args: Vec<Value>,
-    _req: Requester<ChildStdin>,
-  ) {
-    eprintln!("Notification: {}", name);
-    match name.as_ref() {
-      "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
-      "quit" => {
-        process::exit(0);
-      }
-      _ => {}
-    };
-  }
-}
-
-#[async_trait]
-impl RequestHandler for NH2 {
   type Writer = ChildStdin;
 
   async fn handle_request(
@@ -244,6 +222,23 @@ impl RequestHandler for NH2 {
       &_ => Err(Value::from("wrong method name for request")),
     }
   }
+
+  async fn handle_notify(
+    &self,
+    name: String,
+    args: Vec<Value>,
+    _req: Requester<ChildStdin>,
+  ) {
+    eprintln!("Notification: {}", name);
+    match name.as_ref() {
+      "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
+      "quit" => {
+        process::exit(0);
+      }
+      _ => {}
+    };
+  }
+
 }
 
 #[cfg(unix)]
