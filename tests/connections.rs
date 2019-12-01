@@ -69,7 +69,7 @@ fn can_connect_to_child_1() {
     to_main: handler_to_main,
   };
 
-  let nvim = create::new_child_cmd(
+  let (nvim, fut) = create::new_child_cmd(
     Command::new(nvimpath)
       .args(&[
         "-u",
@@ -90,6 +90,7 @@ fn can_connect_to_child_1() {
   let nv = nvim.requester().clone();
 
   task::spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
+  task::spawn(fut);
 
   task::block_on(async move {
     while let Some((v, c)) = main_from_handler.recv().await {
@@ -254,7 +255,7 @@ fn can_connect_to_child_2() {
 
   let handler = NH2 {};
 
-  let nvim = create::new_child_cmd(
+  let (nvim, fut) = create::new_child_cmd(
     Command::new(nvimpath)
       .args(&[
         "-u",
@@ -279,7 +280,7 @@ fn can_connect_to_child_2() {
   let nv = nvim.requester().clone();
   task::spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
 
-  nvim.join_dispatch_guard().expect("Could not end io thread");
+  task::block_on(fut);
 
   eprintln!("Quitting");
 }

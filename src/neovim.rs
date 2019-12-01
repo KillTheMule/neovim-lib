@@ -1,5 +1,5 @@
 use std::{
-  clone::Clone, io::Write, process::Child, result, thread, thread::JoinHandle,
+  clone::Clone, io::Write, process::Child, result,
 };
 
 use crate::{
@@ -16,12 +16,12 @@ pub enum Neovim<W>
 where
   W: Write + Send + 'static,
 {
-  Child(Requester<W>, JoinHandle<()>, Child),
-  Parent(Requester<W>, JoinHandle<()>),
-  Tcp(Requester<W>, JoinHandle<()>),
+  Child(Requester<W>, Child),
+  Parent(Requester<W>),
+  Tcp(Requester<W>),
 
   #[cfg(unix)]
-  UnixSocket(Requester<W>, JoinHandle<()>),
+  UnixSocket(Requester<W>),
 }
 
 macro_rules! call_args {
@@ -44,12 +44,13 @@ where
     use Neovim::*;
 
     match self {
-      Child(r, _, _) | Parent(r, _) | Tcp(r, _) => r.clone(),
+      Child(r, _) | Parent(r) | Tcp(r) => r.clone(),
       #[cfg(unix)]
-      UnixSocket(r, _) => r.clone(),
+      UnixSocket(r) => r.clone(),
     }
   }
 
+  /*
   pub fn join_dispatch_guard(self) -> thread::Result<()> {
     use Neovim::*;
 
@@ -59,6 +60,7 @@ where
       UnixSocket(_, j) => j.join(),
     }
   }
+  */
 
   /// Call can be made only after event loop begin processing
   pub async fn call(
@@ -68,9 +70,9 @@ where
   ) -> result::Result<Value, Value> {
     use Neovim::*;
     match self {
-      Child(r, _, _) | Parent(r, _) | Tcp(r, _) => r.call(method, args).await,
+      Child(r, _) | Parent(r) | Tcp(r) => r.call(method, args).await,
       #[cfg(unix)]
-      UnixSocket(r, _) => r.call(method, args).await,
+      UnixSocket(r) => r.call(method, args).await,
     }
   }
 

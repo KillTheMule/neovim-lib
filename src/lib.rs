@@ -8,13 +8,13 @@
 //! use async_std::task;
 //!
 //! let mut handler = DefaultHandler::new();
-//! let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
+//! let (nvim, _) = create::new_tcp("127.0.0.1:6666", handler).unwrap();
 //!
 //! let buffers = task::block_on(nvim.list_bufs()).unwrap();
-//! task::block_on(buffers[0].set_lines(&mut nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
+//! task::block_on(buffers[0].set_lines(&nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
 //! task::block_on(nvim.command("vsplit")).unwrap();
 //! let windows = task::block_on(nvim.list_wins()).unwrap();
-//! task::block_on(windows[0].set_width(&mut nvim, 10)).unwrap();
+//! task::block_on(windows[0].set_width(&nvim, 10)).unwrap();
 //! ```
 //! ## Process notify events from neovim
 //!

@@ -5,8 +5,9 @@ use std::{
     atomic::{AtomicU64, Ordering},
     Arc, Mutex,
   },
-  thread,
-  thread::JoinHandle,
+  future::Future,
+  //thread,
+  //thread::JoinHandle,
 };
 
 use async_std::{sync, task};
@@ -46,7 +47,7 @@ where
     reader: R,
     writer: <H as Handler>::Writer,
     handler: H,
-  ) -> (Requester<<H as Handler>::Writer>, JoinHandle<()>)
+  ) -> (Requester<<H as Handler>::Writer>, impl Future<Output=()>)
   where
     R: Read + Send + 'static,
     H: Handler + Send + 'static,
@@ -61,10 +62,11 @@ where
 
     let req_t = req.clone();
 
-    let dispatch_guard =
-      thread::spawn(move || Self::io_loop(handler, reader, req_t));
+    //let dispatch_guard =
+     // thread::spawn(move || Self::io_loop(handler, reader, req_t));
+    let fut = Self::io_loop(handler, reader, req_t);
 
-    (req, dispatch_guard)
+    (req, fut)
   }
 
   fn send_msg(
@@ -113,7 +115,7 @@ where
     });
   }
 
-  fn io_loop<H, R>(
+  async fn io_loop<H, R>(
     handler: H,
     mut reader: BufReader<R>,
     req: Requester<<H as Handler>::Writer>,

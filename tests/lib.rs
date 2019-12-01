@@ -3,8 +3,7 @@ extern crate rmp;
 extern crate tempdir;
 
 use async_std::task;
-use neovim_lib::DefaultHandler;
-use neovim_lib::create;
+use neovim_lib::{create, DefaultHandler};
 
 #[cfg(unix)]
 use std::process::Command;
@@ -15,11 +14,11 @@ use tempdir::TempDir;
 #[test]
 fn start_stop_test() {
   let handler = DefaultHandler::new();
-  let nvim = if cfg!(target_os = "windows") {
-    create::new_child_path("E:\\Neovim\\bin\\nvim.exe", handler).unwrap()
-  } else {
-    create::new_child(handler).unwrap()
-  };
+  #[cfg(target_os = "windows")]
+  let (nvim, _) =
+    create::new_child_path("E:\\Neovim\\bin\\nvim.exe", handler).unwrap();
+  #[cfg(not(target_os = "windows"))]
+  let (nvim, _) = create::new_child(handler).unwrap();
 
   println!("{:?}", task::block_on(nvim.get_api_info()).unwrap());
 }
@@ -28,7 +27,7 @@ fn start_stop_test() {
 #[test]
 fn remote_test() {
   let handler = DefaultHandler::new();
-  let nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
+  let (nvim, _) = create::new_tcp("127.0.0.1:6666", handler).unwrap();
   task::block_on(nvim.command("echo \"Test\"")).unwrap();
 }
 
@@ -36,10 +35,10 @@ fn remote_test() {
 #[test]
 fn edit_test() {
   let handler = DefaultHandler::new();
-  let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
+  let (nvim, _) = create::new_tcp("127.0.0.1:6666", handler).unwrap();
   let buffers = task::block_on(nvim.list_bufs()).unwrap();
   task::block_on(buffers[0].set_lines(
-    &mut nvim,
+    &nvim,
     0,
     0,
     true,
@@ -48,7 +47,7 @@ fn edit_test() {
   .unwrap();
   task::block_on(nvim.requester().command("vsplit")).unwrap();
   let windows = task::block_on(nvim.list_wins()).unwrap();
-  task::block_on(windows[0].set_width(&mut nvim, 10)).unwrap();
+  task::block_on(windows[0].set_width(&nvim, 10)).unwrap();
 }
 
 #[cfg(unix)]
@@ -90,10 +89,11 @@ fn can_connect_via_unix_socket() {
   }
 
   let handler = DefaultHandler::new();
-  let nvim = create::new_unix_socket(&socket_path, handler).expect(&format!(
-    "Unable to connect to neovim's unix socket at {:?}",
-    &socket_path
-  ));
+  let (nvim, _) =
+    create::new_unix_socket(&socket_path, handler).expect(&format!(
+      "Unable to connect to neovim's unix socket at {:?}",
+      &socket_path
+    ));
 
   let servername = task::block_on(nvim.get_vvar("servername"))
     .expect("Error retrieving servername from neovim over unix socket");
