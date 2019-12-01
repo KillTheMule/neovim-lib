@@ -144,10 +144,8 @@ where
           let writer = writer.clone();
           let handler = handler.clone();
           task::spawn(async move {
-            eprintln!("Responding to request {} with id {}", method, msgid);
             let response = match handler.handle_request(method, params).await {
               Ok(result) => {
-                eprintln!("Responding with id {}", msgid);
                 let r = model::RpcMessage::RpcResponse {
                   msgid,
                   result,
