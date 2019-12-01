@@ -173,11 +173,11 @@ where
         } => {
           let sender = find_sender(&req.queue, msgid);
           if error != Value::Nil {
-            task::spawn(async move {
+            task::block_on(async move {
               sender.send(Err(error)).await;
             });
           } else {
-            task::spawn(async move {
+            task::block_on(async move {
               sender.send(Ok(result)).await;
             });
           }
