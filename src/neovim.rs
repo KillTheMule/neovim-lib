@@ -1,5 +1,5 @@
 use std::{
-  clone::Clone, io::Write, process::Child, result, thread::JoinHandle,
+  clone::Clone, io::Write, process::Child, result, thread::JoinHandle, thread,
 };
 
 use crate::{
@@ -47,6 +47,16 @@ where
       Child(r, _, _) | Parent(r, _) | Tcp(r, _) => r.clone(),
       #[cfg(unix)]
       UnixSocket(r, _) => r.clone(),
+    }
+  }
+
+  pub fn join_dispatch_guard(self) -> thread::Result<()> {
+    use Neovim::*;
+
+    match self {
+      Child(_, j, _) | Parent(_, j) | Tcp(_, j) => j.join(),
+      #[cfg(unix)]
+      UnixSocket(_, j) => j.join(),
     }
   }
 
