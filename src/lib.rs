@@ -54,7 +54,7 @@ extern crate log;
 #[cfg(unix)]
 extern crate unix_socket;
 
-mod rpc;
+pub mod rpc;
 #[macro_use]
 pub mod neovim;
 pub mod callerror;
@@ -70,4 +70,5 @@ pub use crate::{
 };
 
 pub use crate::rpc::handler::Handler;
+pub use crate::rpc::model::IntoVal;
 pub use rmpv::{Integer, Utf8String, Value};

@@ -24,6 +24,7 @@ where
   UnixSocket(Requester<W>),
 }
 
+#[macro_export]
 macro_rules! call_args {
     () => (Vec::new());
     ($($e:expr), +,) => (call_args![$($e),*]);
