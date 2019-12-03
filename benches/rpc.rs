@@ -23,8 +23,7 @@ fn simple_requests(c: &mut Criterion) {
         "NONE",
         "--embed",
         "--headless",
-      ])
-      .env("NVIM_LOG_FILE", "nvimlog"),
+      ]),
     handler,
   )
   .unwrap();
@@ -57,8 +56,7 @@ fn request_file(c: &mut Criterion) {
         "--embed",
         "--headless",
         "Cargo.lock"
-      ])
-      .env("NVIM_LOG_FILE", "nvimlog"),
+      ]),
     handler,
   )
   .unwrap();
