@@ -8,12 +8,12 @@ use std::{
   },
 };
 
-use crate::runtime::{sync, task};
+use crate::runtime::{Sender, Receiver, channel, spawn, block_on};
 
 use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
 
-type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
+type Queue = Arc<Mutex<Vec<(u64, Sender<Result<Value, Value>>)>>>;
 
 pub struct Requester<W>
 where
@@ -71,7 +71,7 @@ where
     &self,
     method: &str,
     args: Vec<Value>,
-  ) -> sync::Receiver<Result<Value, Value>> {
+  ) -> Receiver<Result<Value, Value>> {
     let msgid = self.msgid_counter.fetch_add(1, Ordering::SeqCst);
 
     let req = model::RpcMessage::RpcRequest {
@@ -80,7 +80,7 @@ where
       params: args,
     };
 
-    let (sender, receiver) = sync::channel(1);
+    let (sender, receiver) = channel(1);
 
     self.queue.lock().unwrap().push((msgid, sender));
 
@@ -109,7 +109,7 @@ where
     let mut queue = queue.lock().unwrap();
     queue.drain(0..).for_each(|sender| {
       let e = format!("Error read response: {}", err);
-      task::spawn(async move { sender.1.send(Err(Value::from(e))).await });
+      spawn(async move { sender.1.send(Err(Value::from(e))).await });
     });
   }
 
@@ -140,7 +140,7 @@ where
         } => {
           let req = req.clone();
           let handler = handler.clone();
-          task::spawn(async move {
+          spawn(async move {
             let req_t = req.clone();
             let response =
               match handler.handle_request(method, params, req_t).await {
@@ -171,11 +171,11 @@ where
         } => {
           let sender = find_sender(&req.queue, msgid);
           if error != Value::Nil {
-            task::block_on(async move {
+            block_on(async move {
               sender.send(Err(error)).await;
             });
           } else {
-            task::block_on(async move {
+            block_on(async move {
               sender.send(Ok(result)).await;
             });
           }
@@ -183,7 +183,7 @@ where
         model::RpcMessage::RpcNotification { method, params } => {
           let handler = handler.clone();
           let req = req.clone();
-          task::spawn(async move {
+          spawn(async move {
             handler.handle_notify(method, params, req).await
           });
         }
@@ -199,7 +199,7 @@ where
 fn find_sender(
   queue: &Queue,
   msgid: u64,
-) -> sync::Sender<Result<Value, Value>> {
+) -> Sender<Result<Value, Value>> {
   let mut queue = queue.lock().unwrap();
 
   let pos = queue.iter().position(|req| req.0 == msgid).unwrap();
@@ -215,15 +215,15 @@ mod tests {
     let queue = Arc::new(Mutex::new(Vec::new()));
 
     {
-      let (sender, _receiver) = sync::channel(1);
+      let (sender, _receiver) = channel(1);
       queue.lock().unwrap().push((1, sender));
     }
     {
-      let (sender, _receiver) = sync::channel(1);
+      let (sender, _receiver) = channel(1);
       queue.lock().unwrap().push((2, sender));
     }
     {
-      let (sender, _receiver) = sync::channel(1);
+      let (sender, _receiver) = channel(1);
       queue.lock().unwrap().push((3, sender));
     }
 

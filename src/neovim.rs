@@ -6,7 +6,7 @@ use crate::{
   uioptions::UiAttachOptions,
 };
 
-use async_std::task;
+use crate::runtime::block_on;
 use rmpv::Value;
 
 /// An active Neovim session.
@@ -84,7 +84,7 @@ where
     height: i64,
     opts: &UiAttachOptions,
   ) -> Result<(), CallError> {
-    task::block_on(self.call(
+    block_on(self.call(
       "nvim_ui_attach",
       call_args!(width, height, opts.to_value_map()),
     ))
@@ -96,6 +96,6 @@ where
   /// The quit command is 'qa!' which will make Nvim quit without
   /// saving anything.
   pub fn quit_no_save(&mut self) -> Result<(), CallError> {
-    task::block_on(self.requester().command("qa!"))
+    block_on(self.requester().command("qa!"))
   }
 }

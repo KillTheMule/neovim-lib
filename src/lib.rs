@@ -5,26 +5,26 @@
 //! ## Simple use case
 //! ```no_run
 //! use neovim_lib::{create, DefaultHandler};
-//! use neovim_lib::runtime::task;
+//! use neovim_lib::runtime::block_on;
 //!
 //! let mut handler = DefaultHandler::new();
 //! let (nvim, _) = create::new_tcp("127.0.0.1:6666", handler).unwrap();
 //!
-//! let buffers = task::block_on(nvim.list_bufs()).unwrap();
-//! task::block_on(buffers[0].set_lines(&nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
-//! task::block_on(nvim.command("vsplit")).unwrap();
-//! let windows = task::block_on(nvim.list_wins()).unwrap();
-//! task::block_on(windows[0].set_width(&nvim, 10)).unwrap();
+//! let buffers = block_on(nvim.list_bufs()).unwrap();
+//! block_on(buffers[0].set_lines(&nvim, 0, 0, true, vec!["replace first line".to_owned()])).unwrap();
+//! block_on(nvim.command("vsplit")).unwrap();
+//! let windows = block_on(nvim.list_wins()).unwrap();
+//! block_on(windows[0].set_width(&nvim, 10)).unwrap();
 //! ```
 //! ## Process notify events from neovim
 //!
 //! ```no_run
 //! use neovim_lib::{create, Handler, Value, Requester};
-//! use neovim_lib::runtime::{task, sync};
+//! use neovim_lib::runtime::{block_on, Sender, channel};
 //! use async_trait::async_trait;
 //! use std::net::TcpStream;
 //!
-//! struct MyHandler(sync::Sender<(String, Vec<Value>)>);
+//! struct MyHandler(Sender<(String, Vec<Value>)>);
 //!
 //! #[async_trait]
 //! impl Handler for MyHandler {
@@ -40,11 +40,11 @@
 //!   }
 //! }
 //!
-//! let (mut sender, mut receiver) = sync::channel(1);
+//! let (mut sender, mut receiver) = channel(1);
 //! let mut handler = MyHandler(sender);
 //! let mut nvim = create::new_tcp("127.0.0.1:6666", handler).unwrap();
 //!
-//! let (event_name, args) = task::block_on(receiver.recv()).unwrap();
+//! let (event_name, args) = block_on(receiver.recv()).unwrap();
 //! ```
 extern crate rmp;
 extern crate rmpv;

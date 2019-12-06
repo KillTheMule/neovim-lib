@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use neovim_lib::runtime::task;
+use neovim_lib::runtime::{spawn, block_on};
 use async_trait::async_trait;
 use neovim_lib::{create, Handler, call_args, rpc::IntoVal};
 use std::process::{ChildStdin, Command};
@@ -29,15 +29,15 @@ fn simple_requests(c: &mut Criterion) {
   .unwrap();
 
   let req = nvim.requester(); 
-  task::spawn(io);
+  spawn(io);
 
   let req1 = req.clone();
-  task::block_on(async move {req1.command("set noswapfile").await}).expect("0");
+  block_on(async move {req1.command("set noswapfile").await}).expect("0");
 
   c.bench_function("simple_requests", move |b| {
     b.iter(|| {
         let req = nvim.requester();
-        let _curbuf = task::block_on(async move {
+        let _curbuf = block_on(async move {
           req.get_current_buf().await.expect("1");
         });
       })
@@ -62,15 +62,15 @@ fn request_file(c: &mut Criterion) {
   .unwrap();
 
   let req = nvim.requester(); 
-  task::spawn(io);
+  spawn(io);
 
   let req1 = req.clone();
-  task::block_on(async move {req1.command("set noswapfile").await}).expect("0");
+  block_on(async move {req1.command("set noswapfile").await}).expect("0");
 
   c.bench_function("request_file", move |b| {
     b.iter(|| {
         let req = nvim.requester();
-        let _lines = task::block_on(async move {
+        let _lines = block_on(async move {
           req.call("nvim_buf_get_lines",
             call_args![0i64, 0i64, -1i64, false]).await.expect("1");
         });
