@@ -2,6 +2,7 @@
 //!
 //! Implements support for rust plugins for [Neovim](https://github.com/neovim/neovim) through its msgpack-rpc API.
 //! # Examples
+/*
 //! ## Simple use case
 //! ```no_run
 //! use neovim_lib::{create, DefaultHandler};
@@ -47,6 +48,7 @@
 //!
 //! let (event_name, args) = block_on(receiver.recv()).unwrap();
 //! ```
+*/
 extern crate rmp;
 extern crate rmpv;
 #[macro_use]

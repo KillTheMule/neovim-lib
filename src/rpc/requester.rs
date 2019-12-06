@@ -8,7 +8,7 @@ use std::{
   },
 };
 
-use crate::runtime::{Sender, Receiver, channel, Runtime};
+use crate::runtime::{Sender, Receiver, channel, spawn};
 
 use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
@@ -22,7 +22,6 @@ where
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
   pub(crate) msgid_counter: Arc<AtomicU64>,
-  pub(crate) runtime : Arc<Runtime>,
 }
 
 impl<W> Clone for Requester<W>
@@ -34,7 +33,6 @@ where
       writer: self.writer.clone(),
       queue: self.queue.clone(),
       msgid_counter: self.msgid_counter.clone(),
-      runtime: self.runtime.clone()
     }
   }
 }
@@ -58,7 +56,6 @@ where
       writer: Arc::new(Mutex::new(BufWriter::new(writer))),
       msgid_counter: Arc::new(AtomicU64::new(0)),
       queue: Arc::new(Mutex::new(Vec::new())),
-      runtime: Arc::new(Runtime::new()),
     };
 
     let req_t = req.clone();
@@ -98,7 +95,7 @@ where
     method: &str,
     args: Vec<Value>,
   ) -> Result<Value, Value> {
-    let receiver = self.send_msg(method, args);
+    let mut receiver = self.send_msg(method, args);
 
     receiver.recv().await.unwrap_or_else(|| {
       Err(Value::from(format!(
@@ -110,9 +107,9 @@ where
 
   fn send_error_to_callers(&self, queue: &Queue, err: &Box<dyn Error>) {
     let mut queue = queue.lock().unwrap();
-    queue.drain(0..).for_each(|sender| {
+    queue.drain(0..).for_each(|mut sender| {
       let e = format!("Error read response: {}", err);
-      self.runtime.spawn(async move { sender.1.send(Err(Value::from(e))).await });
+      spawn(async move { sender.1.send(Err(Value::from(e))).await });
     });
   }
 
@@ -126,6 +123,7 @@ where
   {
     let handler = Arc::new(handler);
     loop {
+      eprintln!("running loop");
       let msg = match model::decode(&mut reader) {
         Ok(msg) => msg,
         Err(e) => {
@@ -142,9 +140,8 @@ where
           params,
         } => {
           let req = req.clone();
-          let rt = req.runtime.clone();
           let handler = handler.clone();
-          rt.spawn(async move {
+          spawn(async move {
             let req_t = req.clone();
             let response =
               match handler.handle_request(method, params, req_t).await {
@@ -173,22 +170,21 @@ where
           result,
           error,
         } => {
-          let sender = find_sender(&req.queue, msgid);
+          let mut sender = find_sender(&req.queue, msgid);
           if error != Value::Nil {
-            req.runtime.spawn(async move {
-              sender.send(Err(error)).await;
-            }).await;
+            spawn(async move {
+              sender.send(Err(error)).await.unwrap();
+            });
           } else {
-            req.runtime.spawn(async move {
-              sender.send(Ok(result)).await;
-            }).await;
+            spawn(async move {
+              sender.send(Ok(result)).await.unwrap();
+            });
           }
         }
         model::RpcMessage::RpcNotification { method, params } => {
           let handler = handler.clone();
           let req = req.clone();
-          let rt = req.runtime.clone();
-          rt.spawn(async move {
+          spawn(async move {
             handler.handle_notify(method, params, req).await
           });
         }

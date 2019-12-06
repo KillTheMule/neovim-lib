@@ -1,10 +1,10 @@
 extern crate neovim_lib;
 extern crate rmp;
 
-use neovim_lib::runtime::{Sender, channel};
-use async_std::task::block_on;
+//use neovim_lib::runtime::{Sender, channel};
 use async_trait::async_trait;
-use neovim_lib::{create, Handler, Requester};
+use neovim_lib::{create, Handler, Requester, runtime::spawn};
+use tokio::runtime::Runtime;
 use rmpv::Value;
 
 const NVIMPATH: &str = "neovim/build/bin/nvim";
@@ -13,6 +13,7 @@ const NVIMPATH: &str = "neovim/build/bin/nvim";
 use std::process::Command;
 use std::process::{self, ChildStdin};
 
+/*
 struct NH {
   pub to_main: Sender<(Value, Sender<Value>)>,
 }
@@ -28,11 +29,12 @@ impl Handler for NH {
     _req: Requester<ChildStdin>,
   ) -> Result<Value, Value> {
     eprintln!("Request: {}", name);
+    let mut to_main = self.to_main.clone();
     match name.as_ref() {
       "dummy" => Ok(Value::from("o")),
       "req" => {
-        let (sender, receiver) = channel(1);
-        self.to_main.send((args.pop().unwrap(), sender)).await;
+        let (sender, mut receiver) = channel(1);
+        to_main.send((args.pop().unwrap(), sender)).await.unwrap();
         let ret = receiver.recv().await.unwrap();
         eprintln!("Sending {}", ret.as_str().unwrap());
         Ok(ret)
@@ -48,11 +50,12 @@ impl Handler for NH {
     _req: Requester<ChildStdin>,
   ) {
     eprintln!("Notification: {}", name);
+    let mut to_main = self.to_main.clone();
     match name.as_ref() {
       "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
       "quit" => {
         let (sender, _receiver) = channel(1);
-        self.to_main.send((Value::from("quit"), sender)).await;
+        to_main.send((Value::from("quit"), sender)).await.unwrap();
       }
       _ => {}
     };
@@ -66,7 +69,7 @@ fn can_connect_to_child_1() {
       call rpcrequest(1, 'req', 'y') 
     endfun""#;
 
-  let (handler_to_main, main_from_handler) = channel(2);
+  let (handler_to_main, mut main_from_handler) = channel(2);
   let handler = NH {
     to_main: handler_to_main,
   };
@@ -93,8 +96,8 @@ fn can_connect_to_child_1() {
   rt.spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
   rt.spawn(fut);
 
-  block_on(async move {
-    while let Some((v, c)) = main_from_handler.recv().await {
+  rt.spawn(async move {
+    while let Some((v, mut c)) = main_from_handler.recv().await {
       let v = v.as_str().unwrap();
       eprintln!("Req {}", v);
 
@@ -133,7 +136,7 @@ fn can_connect_to_child_1() {
               .as_str()
               .unwrap(),
           );
-          c.send(Value::from(x)).await;
+          c.send(Value::from(x)).await.unwrap();
           nvim.command("call rpcnotify(1, 'quit')").await.unwrap();
         }),
         "z" => rt.spawn(async move {
@@ -144,7 +147,7 @@ fn can_connect_to_child_1() {
             .as_str()
             .unwrap()
             .into();
-          c.send(Value::from(x)).await;
+          c.send(Value::from(x)).await.unwrap();
         }),
         _ => break,
       };
@@ -152,7 +155,7 @@ fn can_connect_to_child_1() {
   });
   eprintln!("Quitting");
 }
-
+*/
 struct NH2 {}
 
 #[async_trait]
@@ -278,10 +281,11 @@ fn can_connect_to_child_2() {
   .unwrap();
 
   let nv = nvim.requester().clone();
-  let rt = nvim.runtime().clone();
+  let mut rt = Runtime::new().unwrap();
+
   rt.spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
 
-  block_on(fut);
+  rt.block_on(fut);
 
   eprintln!("Quitting");
 }
