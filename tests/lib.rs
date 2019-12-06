@@ -2,7 +2,7 @@ extern crate neovim_lib;
 extern crate rmp;
 extern crate tempdir;
 
-use async_std::task;
+use neovim_lib::runtime::task;
 use neovim_lib::{create, DefaultHandler};
 
 #[cfg(unix)]

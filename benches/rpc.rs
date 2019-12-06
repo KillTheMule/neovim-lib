@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use async_std::task;
+use neovim_lib::runtime::task;
 use async_trait::async_trait;
 use neovim_lib::{create, Handler, call_args, rpc::IntoVal};
 use std::process::{ChildStdin, Command};

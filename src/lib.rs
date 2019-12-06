@@ -5,7 +5,7 @@
 //! ## Simple use case
 //! ```no_run
 //! use neovim_lib::{create, DefaultHandler};
-//! use async_std::task;
+//! use neovim_lib::runtime::task;
 //!
 //! let mut handler = DefaultHandler::new();
 //! let (nvim, _) = create::new_tcp("127.0.0.1:6666", handler).unwrap();
@@ -20,7 +20,7 @@
 //!
 //! ```no_run
 //! use neovim_lib::{create, Handler, Value, Requester};
-//! use async_std::{task, sync};
+//! use neovim_lib::runtime::{task, sync};
 //! use async_trait::async_trait;
 //! use std::net::TcpStream;
 //!
@@ -61,6 +61,7 @@ pub mod callerror;
 pub mod create;
 pub mod neovim_api;
 pub mod uioptions;
+pub mod runtime;
 
 pub use crate::{
   callerror::CallError,

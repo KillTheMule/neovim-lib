@@ -1,7 +1,7 @@
 extern crate neovim_lib;
 extern crate rmp;
 
-use async_std::{sync, task};
+use neovim_lib::runtime::{sync, task};
 use async_trait::async_trait;
 use neovim_lib::{create, Handler, Requester};
 use rmpv::Value;

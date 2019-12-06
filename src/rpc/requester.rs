@@ -10,7 +10,7 @@ use std::{
   //thread::JoinHandle,
 };
 
-use async_std::{sync, task};
+use crate::runtime::{sync, task};
 
 use crate::rpc::{model, handler::Handler};
 use rmpv::Value;
