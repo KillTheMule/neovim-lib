@@ -1,5 +1,29 @@
+use std::future::Future;
+
 pub use async_std::sync::{Sender, Receiver, channel};
-pub use async_std::task::spawn;
+//pub use async_std::task::Builder as Runtime;
+use async_std::task::JoinHandle;
 
 //pub use tokio::sync::mpsc::{Sender, Receiver, channel};
-//pub use async_std::task::{spawn, block_on};
+//pub use tokio::spawn;
+
+pub struct Runtime {}
+
+impl Runtime {
+  pub fn new() -> Self {
+    Runtime {}
+  }
+
+  pub fn spawn<F>(&self, future: F) -> JoinHandle<F::Output> 
+  where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static, 
+  {
+    async_std::task::spawn(future)
+  }
+
+  pub fn block_on<F: Future>(&mut self, future: F) -> F::Output
+  {
+    async_std::task::block_on(future)
+  }
+}

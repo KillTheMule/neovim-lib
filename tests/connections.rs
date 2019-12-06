@@ -1,7 +1,7 @@
 extern crate neovim_lib;
 extern crate rmp;
 
-use neovim_lib::runtime::{Sender, channel, spawn};
+use neovim_lib::runtime::{Sender, channel};
 use async_std::task::block_on;
 use async_trait::async_trait;
 use neovim_lib::{create, Handler, Requester};
@@ -89,18 +89,19 @@ fn can_connect_to_child_1() {
   .unwrap();
 
   let nv = nvim.requester().clone();
-
-  spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
-  spawn(fut);
+  let rt = nvim.runtime().clone();
+  rt.spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
+  rt.spawn(fut);
 
   block_on(async move {
     while let Some((v, c)) = main_from_handler.recv().await {
       let v = v.as_str().unwrap();
       eprintln!("Req {}", v);
 
+      let rt = nvim.runtime().clone();
       let nvim = nvim.requester().clone();
       match v {
-        "y" => spawn(async move {
+        "y" => rt.spawn(async move {
           let mut x: String = nvim
             .get_vvar("servername")
             .await
@@ -135,7 +136,7 @@ fn can_connect_to_child_1() {
           c.send(Value::from(x)).await;
           nvim.command("call rpcnotify(1, 'quit')").await.unwrap();
         }),
-        "z" => spawn(async move {
+        "z" => rt.spawn(async move {
           let x: String = nvim
             .get_vvar("progname")
             .await
@@ -277,7 +278,8 @@ fn can_connect_to_child_2() {
   .unwrap();
 
   let nv = nvim.requester().clone();
-  spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
+  let rt = nvim.runtime().clone();
+  rt.spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
 
   block_on(fut);
 

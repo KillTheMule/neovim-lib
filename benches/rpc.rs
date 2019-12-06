@@ -1,5 +1,4 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use neovim_lib::runtime::spawn;
 use async_std::task::block_on;
 use async_trait::async_trait;
 use neovim_lib::{create, Handler, call_args, rpc::IntoVal};
@@ -30,7 +29,8 @@ fn simple_requests(c: &mut Criterion) {
   .unwrap();
 
   let req = nvim.requester(); 
-  spawn(io);
+  let rt = nvim.runtime().clone();
+  rt.spawn(io);
 
   let req1 = req.clone();
   block_on(async move {req1.command("set noswapfile").await}).expect("0");
@@ -63,7 +63,8 @@ fn request_file(c: &mut Criterion) {
   .unwrap();
 
   let req = nvim.requester(); 
-  spawn(io);
+  let rt = nvim.runtime().clone();
+  rt.spawn(io);
 
   let req1 = req.clone();
   block_on(async move {req1.command("set noswapfile").await}).expect("0");

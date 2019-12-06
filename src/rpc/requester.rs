@@ -8,7 +8,7 @@ use std::{
   },
 };
 
-use crate::runtime::{Sender, Receiver, channel, spawn};
+use crate::runtime::{Sender, Receiver, channel, Runtime};
 
 use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
@@ -22,6 +22,7 @@ where
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
   pub(crate) msgid_counter: Arc<AtomicU64>,
+  pub(crate) runtime : Arc<Runtime>,
 }
 
 impl<W> Clone for Requester<W>
@@ -33,6 +34,7 @@ where
       writer: self.writer.clone(),
       queue: self.queue.clone(),
       msgid_counter: self.msgid_counter.clone(),
+      runtime: self.runtime.clone()
     }
   }
 }
@@ -56,6 +58,7 @@ where
       writer: Arc::new(Mutex::new(BufWriter::new(writer))),
       msgid_counter: Arc::new(AtomicU64::new(0)),
       queue: Arc::new(Mutex::new(Vec::new())),
+      runtime: Arc::new(Runtime::new()),
     };
 
     let req_t = req.clone();
@@ -105,11 +108,11 @@ where
     })
   }
 
-  fn send_error_to_callers(queue: &Queue, err: &Box<dyn Error>) {
+  fn send_error_to_callers(&self, queue: &Queue, err: &Box<dyn Error>) {
     let mut queue = queue.lock().unwrap();
     queue.drain(0..).for_each(|sender| {
       let e = format!("Error read response: {}", err);
-      spawn(async move { sender.1.send(Err(Value::from(e))).await });
+      self.runtime.spawn(async move { sender.1.send(Err(Value::from(e))).await });
     });
   }
 
@@ -127,7 +130,7 @@ where
         Ok(msg) => msg,
         Err(e) => {
           error!("Error while reading: {}", e);
-          Self::send_error_to_callers(&req.queue, &e);
+          req.send_error_to_callers(&req.queue, &e);
           return;
         }
       };
@@ -139,8 +142,9 @@ where
           params,
         } => {
           let req = req.clone();
+          let rt = req.runtime.clone();
           let handler = handler.clone();
-          spawn(async move {
+          rt.spawn(async move {
             let req_t = req.clone();
             let response =
               match handler.handle_request(method, params, req_t).await {
@@ -171,11 +175,11 @@ where
         } => {
           let sender = find_sender(&req.queue, msgid);
           if error != Value::Nil {
-            spawn(async move {
+            req.runtime.spawn(async move {
               sender.send(Err(error)).await;
             }).await;
           } else {
-            spawn(async move {
+            req.runtime.spawn(async move {
               sender.send(Ok(result)).await;
             }).await;
           }
@@ -183,7 +187,8 @@ where
         model::RpcMessage::RpcNotification { method, params } => {
           let handler = handler.clone();
           let req = req.clone();
-          spawn(async move {
+          let rt = req.runtime.clone();
+          rt.spawn(async move {
             handler.handle_notify(method, params, req).await
           });
         }

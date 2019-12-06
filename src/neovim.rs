@@ -1,9 +1,11 @@
 use std::{clone::Clone, io::Write, process::Child, result};
+use std::sync::Arc;
 
 use crate::{
   callerror::{map_generic_error, CallError},
   rpc::{model::IntoVal, Requester},
   uioptions::UiAttachOptions,
+  runtime::Runtime,
 };
 
 use rmpv::Value;
@@ -45,6 +47,16 @@ where
       Child(r, _) | Parent(r) | Tcp(r) => r.clone(),
       #[cfg(unix)]
       UnixSocket(r) => r.clone(),
+    }
+  }
+
+  pub fn runtime(&self) -> &Arc<Runtime> {
+    use Neovim::*;
+
+    match self {
+      Child(r, _) | Parent(r) | Tcp(r) => &r.runtime,
+      #[cfg(unix)]
+      UnixSocket(r) => &r.runtime,
     }
   }
 
