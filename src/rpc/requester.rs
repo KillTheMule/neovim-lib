@@ -1,6 +1,6 @@
 use std::{
   error::Error,
-  io::{BufWriter, Write},
+  io::{BufReader, BufWriter, Read, Write},
   sync::{
     atomic::{AtomicU64, Ordering},
     Arc, Mutex,
@@ -11,8 +11,6 @@ use std::{
 };
 
 use async_std::{sync, task};
-use async_std::io::Read as AsyncRead;
-use async_std::io::BufReader as AsyncBufReader;
 
 use crate::rpc::{model, handler::Handler};
 use rmpv::Value;
@@ -51,10 +49,10 @@ where
     handler: H,
   ) -> (Requester<<H as Handler>::Writer>, impl Future<Output=()>)
   where
+    R: Read + Send + 'static,
     H: Handler + Send + 'static,
-    R: AsyncRead + std::marker::Unpin,
   {
-    let reader = AsyncBufReader::new(reader);
+    let reader = BufReader::new(reader);
 
     let req = Requester {
       writer: Arc::new(Mutex::new(BufWriter::new(writer))),
@@ -119,16 +117,15 @@ where
 
   async fn io_loop<H, R>(
     handler: H,
-    mut reader: AsyncBufReader<R>,
+    mut reader: BufReader<R>,
     req: Requester<<H as Handler>::Writer>,
   ) where
     H: Handler + Sync + 'static,
-    R: AsyncRead + std::marker::Unpin,
-
+    R: Read + Send + 'static,
   {
     let handler = Arc::new(handler);
     loop {
-      let msg = match model::decode(&mut reader).await {
+      let msg = match model::decode(&mut reader) {
         Ok(msg) => msg,
         Err(e) => {
           error!("Error while reading: {}", e);
