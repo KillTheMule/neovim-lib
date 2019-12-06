@@ -3,8 +3,10 @@ use std::{
   error::Error,
   io,
   io::Read,
+  self,
+  sync::{Arc}
 };
-use crate::runtime::{AsyncWrite, AsyncWriteExt, BufWriter};
+use crate::runtime::{AsyncWrite, AsyncWriteExt, BufWriter, Result, Mutex};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum RpcMessage {
@@ -66,7 +68,7 @@ macro_rules! rpc_args {
     }}
 }
 
-pub fn decode<R: Read>(reader: &mut R) -> Result<RpcMessage, Box<dyn Error>> {
+pub fn decode<R: Read>(reader: &mut R) -> std::result::Result<RpcMessage, Box<dyn Error>> {
   let mut arr = try_arr!(read_value(reader)?, "Rpc message must be array");
   match try_int!(arr[0], "Can't find message type") {
     0 => {
@@ -106,9 +108,9 @@ pub fn decode<R: Read>(reader: &mut R) -> Result<RpcMessage, Box<dyn Error>> {
 }
 
 pub async fn encode<W: AsyncWrite + Send + Unpin + 'static>(
-  writer: &mut BufWriter<W>,
+  writer: Arc<Mutex<BufWriter<W>>>,
   msg: RpcMessage,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
   let mut v: Vec<u8> = vec![];
   match msg {
     RpcMessage::RpcRequest {
@@ -117,7 +119,7 @@ pub async fn encode<W: AsyncWrite + Send + Unpin + 'static>(
       params,
     } => {
       let val = rpc_args!(0, msgid, method, params);
-      write_value(&mut v, &val)?;
+      write_value(&mut v, &val).unwrap();
     }
     RpcMessage::RpcResponse {
       msgid,
@@ -125,14 +127,15 @@ pub async fn encode<W: AsyncWrite + Send + Unpin + 'static>(
       result,
     } => {
       let val = rpc_args!(1, msgid, error, result);
-      write_value(&mut v, &val)?;
+      write_value(&mut v, &val).unwrap();
     }
     RpcMessage::RpcNotification { method, params } => {
       let val = rpc_args!(2, method, params);
-      write_value(&mut v, &val)?;
+      write_value(&mut v, &val).unwrap();
     }
   };
 
+  let mut writer = writer.lock().await;
   writer.write_all(&v).await?;
   writer.flush().await?;
 

@@ -1,9 +1,10 @@
 //use std::future::Future;
 
 pub use tokio::sync::mpsc::{Sender, Receiver, channel};
+pub use tokio::sync::Mutex;
 pub use tokio::spawn;
 pub use tokio::io::{AsyncRead, AsyncWrite, AsyncReadExt, AsyncWriteExt,
-BufWriter, BufReader, Stdin, Stdout, stdin, stdout};
+BufWriter, BufReader, Stdin, Stdout, stdin, stdout, Result};
 pub use tokio::net::{TcpStream, UnixStream};
 pub use tokio::process::{ChildStdin, ChildStdout, Command, Child};
 

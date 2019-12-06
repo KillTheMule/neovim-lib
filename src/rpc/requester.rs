@@ -5,12 +5,12 @@ use std::{
   io::Cursor,
   sync::{
     atomic::{AtomicU64, Ordering},
-    Arc, Mutex,
+    Arc,
   },
 };
 
 use crate::runtime::{Sender, Receiver, channel, spawn, AsyncRead, AsyncWrite,
-AsyncReadExt, BufWriter, BufReader};
+AsyncReadExt, BufWriter, BufReader, Mutex};
 
 use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
@@ -85,9 +85,9 @@ where
 
     let (sender, receiver) = channel(1);
 
-    self.queue.lock().unwrap().push((msgid, sender));
+    self.queue.lock().await.push((msgid, sender));
 
-    let writer = &mut *self.writer.lock().unwrap();
+    let writer = self.writer.clone(); //&mut *self.writer.lock().unwrap();
     model::encode(writer, req).await.expect("Error sending message");
 
     receiver
@@ -108,8 +108,8 @@ where
     })
   }
 
-  fn send_error_to_callers(&self, queue: &Queue, err: &Box<dyn Error>) {
-    let mut queue = queue.lock().unwrap();
+  async fn send_error_to_callers(&self, queue: &Queue, err: &Box<dyn Error>) {
+    let mut queue = queue.lock().await;
     queue.drain(0..).for_each(|mut sender| {
       let e = format!("Error read response: {}", err);
       spawn(async move { sender.1.send(Err(Value::from(e))).await });
@@ -135,7 +135,7 @@ where
         Ok(msg) => msg,
         Err(e) => {
           error!("Error while reading: {}", e);
-          req.send_error_to_callers(&req.queue, &e);
+          req.send_error_to_callers(&req.queue, &e).await;
           return;
         }
       };
@@ -172,8 +172,15 @@ where
                 },
               };
 
-            let writer = &mut *(req.writer).lock().unwrap();
-            model::encode(writer, response).await.expect("Error sending message");
+            //let writer = req.writer.clone();// &mut *(req.writer).lock().unwrap();
+            let w = req.writer;
+            model::encode(w, response).await.unwrap();//.expect("Error sending message");
+            /*
+            let fut = async move {
+              model::encode(req.writer, response).await;//.expect("Error sending message");
+            };
+            fut.await; 
+            */
           });
         }
         model::RpcMessage::RpcResponse {
@@ -181,7 +188,7 @@ where
           result,
           error,
         } => {
-          let mut sender = find_sender(&req.queue, msgid);
+          let mut sender = find_sender(&req.queue, msgid).await;
           if error != Value::Nil {
             spawn(async move {
               sender.send(Err(error)).await.unwrap();
@@ -208,11 +215,11 @@ where
  * is that Vec is faster on small queue sizes
  * in most cases Vec.len = 1 so we just take first item in iteration.
  */
-fn find_sender(
+async fn find_sender(
   queue: &Queue,
   msgid: u64,
 ) -> Sender<Result<Value, Value>> {
-  let mut queue = queue.lock().unwrap();
+  let mut queue = queue.lock().await;
 
   let pos = queue.iter().position(|req| req.0 == msgid).unwrap();
   queue.remove(pos).1

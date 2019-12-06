@@ -4,7 +4,6 @@ extern crate rmp;
 //use neovim_lib::runtime::{Sender, channel};
 use async_trait::async_trait;
 use neovim_lib::{create, Handler, Requester, runtime::spawn};
-use tokio::runtime::Runtime;
 use tokio;
 use rmpv::Value;
 
