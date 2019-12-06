@@ -1,6 +1,5 @@
 use std::{
   io::{self, Error, ErrorKind, Stdout},
-  net::TcpStream,
   path::Path,
   process::{ChildStdin, Command, Stdio},
   future::Future,
@@ -8,9 +7,12 @@ use std::{
 
 use crate::{Handler, Neovim, Requester};
 
-#[cfg(unix)]
-use unix_socket::UnixStream;
+//use async_std::net::TcpStream;
 
+//#[cfg(unix)]
+//use unix_socket::UnixStream;
+
+/*
 /// Connect to nvim instance via tcp
 pub fn new_tcp<H>(addr: &str, handler: H) -> io::Result<(Neovim<TcpStream>, impl
   Future<Output=()>)>
@@ -42,6 +44,7 @@ where
 
   Ok((Neovim::UnixSocket(requester), fut))
 }
+*/
 
 /// Connect to a Neovim instance by spawning a new one.
 pub fn new_child<H>(handler: H) -> io::Result<(Neovim<ChildStdin>, impl

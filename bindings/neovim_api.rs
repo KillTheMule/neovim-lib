@@ -1,5 +1,5 @@
 // Auto generated {{date}}
-use std::io::Write;
+use async_std::io::Write;
 
 use crate::neovim::*;
 use crate::rpc::*;

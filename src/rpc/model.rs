@@ -1,9 +1,13 @@
 use rmpv::{decode::read_value, encode::write_value, Value};
 use std::{
+  self,
   error::Error,
   io,
-  io::{Read, Write},
+  io::Write,
 };
+
+use async_std::io::Read as AsyncRead;
+use async_std::io::prelude::ReadExt;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum RpcMessage {
@@ -65,8 +69,13 @@ macro_rules! rpc_args {
     }}
 }
 
-pub fn decode<R: Read>(reader: &mut R) -> Result<RpcMessage, Box<dyn Error>> {
-  let mut arr = try_arr!(read_value(reader)?, "Rpc message must be array");
+pub async fn decode<R>(reader: &mut R) -> Result<RpcMessage, Box<dyn Error>>
+where R: AsyncRead + std::marker::Unpin,
+{
+  let mut buf: Vec<u8> = vec![];
+  reader.read(&mut buf).await?;
+
+  let mut arr = try_arr!(read_value(&mut &*buf)?, "Rpc message must be array");
   match try_int!(arr[0], "Can't find message type") {
     0 => {
       arr.truncate(4);
