@@ -1,6 +1,4 @@
-use std::{
-  clone::Clone, io::Write, process::Child, result,
-};
+use std::{clone::Clone, io::Write, process::Child, result};
 
 use crate::{
   callerror::{map_generic_error, CallError},

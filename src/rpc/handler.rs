@@ -43,7 +43,10 @@ where
 }
 */
 
-impl<Q> Handler for DefaultHandler<Q> where Q: Write + Send + Sync + 'static {
+impl<Q> Handler for DefaultHandler<Q>
+where
+  Q: Write + Send + Sync + 'static,
+{
   type Writer = Q;
 }
 

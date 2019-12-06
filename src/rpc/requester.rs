@@ -1,18 +1,16 @@
 use std::{
   error::Error,
+  future::Future,
   io::{BufReader, BufWriter, Read, Write},
   sync::{
     atomic::{AtomicU64, Ordering},
     Arc, Mutex,
   },
-  future::Future,
-  //thread,
-  //thread::JoinHandle,
 };
 
 use crate::runtime::{sync, task};
 
-use crate::rpc::{model, handler::Handler};
+use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
 
 type Queue = Arc<Mutex<Vec<(u64, sync::Sender<Result<Value, Value>>)>>>;
@@ -47,7 +45,7 @@ where
     reader: R,
     writer: <H as Handler>::Writer,
     handler: H,
-  ) -> (Requester<<H as Handler>::Writer>, impl Future<Output=()>)
+  ) -> (Requester<<H as Handler>::Writer>, impl Future<Output = ()>)
   where
     R: Read + Send + 'static,
     H: Handler + Send + 'static,
@@ -63,7 +61,7 @@ where
     let req_t = req.clone();
 
     //let dispatch_guard =
-     // thread::spawn(move || Self::io_loop(handler, reader, req_t));
+    // thread::spawn(move || Self::io_loop(handler, reader, req_t));
     let fut = Self::io_loop(handler, reader, req_t);
 
     (req, fut)

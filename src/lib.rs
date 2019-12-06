@@ -60,8 +60,8 @@ pub mod neovim;
 pub mod callerror;
 pub mod create;
 pub mod neovim_api;
-pub mod uioptions;
 pub mod runtime;
+pub mod uioptions;
 
 pub use crate::{
   callerror::CallError,
@@ -70,6 +70,5 @@ pub use crate::{
   uioptions::{UiAttachOptions, UiOption},
 };
 
-pub use crate::rpc::handler::Handler;
-pub use crate::rpc::model::IntoVal;
+pub use crate::rpc::{handler::Handler, model::IntoVal};
 pub use rmpv::{Integer, Utf8String, Value};
