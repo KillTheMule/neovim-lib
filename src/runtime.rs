@@ -2,6 +2,10 @@
 
 pub use tokio::sync::mpsc::{Sender, Receiver, channel};
 pub use tokio::spawn;
+pub use tokio::io::{AsyncRead, AsyncWrite, AsyncReadExt, AsyncWriteExt,
+BufWriter, BufReader, Stdin, Stdout, stdin, stdout};
+pub use tokio::net::{TcpStream, UnixStream};
+pub use tokio::process::{ChildStdin, ChildStdout, Command, Child};
 
 /*
 pub use async_std::sync::{Sender, Receiver, channel};

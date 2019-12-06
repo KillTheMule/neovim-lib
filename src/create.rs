@@ -1,26 +1,28 @@
 use std::{
   future::Future,
-  io::{self, Error, ErrorKind, Stdout},
-  net::TcpStream,
+  io::{self, Error, ErrorKind},
+  process::Stdio,
   path::Path,
-  process::{ChildStdin, Command, Stdio},
 };
 
 use crate::{Handler, Neovim, Requester};
+use crate::runtime::{Command, ChildStdin, TcpStream, Stdout};
 
 #[cfg(unix)]
-use unix_socket::UnixStream;
+use crate::runtime::{UnixStream, stdin, stdout};
 
 /// Connect to nvim instance via tcp
-pub fn new_tcp<H>(
-  addr: &str,
+pub async fn new_tcp<H>(
+  host: &str,
+  port: u16,
   handler: H,
 ) -> io::Result<(Neovim<TcpStream>, impl Future<Output = ()>)>
 where
   H: Handler<Writer = TcpStream> + Send + 'static,
 {
-  let stream = TcpStream::connect(addr)?;
-  let read = stream.try_clone()?;
+  let stream = TcpStream::connect((host, port)).await?;
+  let read = TcpStream::connect((host, port)).await?;
+  //let read = stream.try_clone()?;
   let (requester, fut) = Requester::<TcpStream>::new(stream, read, handler);
 
   Ok((Neovim::Tcp(requester), fut))
@@ -28,15 +30,16 @@ where
 
 #[cfg(unix)]
 /// Connect to nvim instance via unix socket
-pub fn new_unix_socket<H, P: AsRef<Path>>(
+pub async fn new_unix_socket<H, P: AsRef<Path> + Clone>(
   path: P,
   handler: H,
 ) -> io::Result<(Neovim<UnixStream>, impl Future<Output = ()>)>
 where
   H: Handler<Writer = UnixStream> + Send + 'static,
 {
-  let stream = UnixStream::connect(path)?;
-  let read = stream.try_clone()?;
+  let stream = UnixStream::connect(path.clone()).await?;
+  let read = UnixStream::connect(path).await?;
+  //let read = stream.try_clone()?;
 
   let (requester, fut) = Requester::<UnixStream>::new(stream, read, handler);
 
@@ -80,11 +83,11 @@ where
 {
   let mut child = cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
   let stdout = child
-    .stdout
+    .stdout()
     .take()
     .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdout"))?;
   let stdin = child
-    .stdin
+    .stdin()
     .take()
     .ok_or_else(|| Error::new(ErrorKind::Other, "Can't open stdin"))?;
 
@@ -101,7 +104,7 @@ where
   H: Handler<Writer = Stdout> + Send + 'static,
 {
   let (requester, fut) =
-    Requester::<Stdout>::new(io::stdin(), io::stdout(), handler);
+    Requester::<Stdout>::new(stdin(), stdout(), handler);
 
   Ok((Neovim::Parent(requester), fut))
 }

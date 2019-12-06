@@ -1,14 +1,16 @@
 use std::{
+  convert::TryInto,
   error::Error,
   future::Future,
-  io::{BufReader, BufWriter, Read, Write},
+  io::Cursor,
   sync::{
     atomic::{AtomicU64, Ordering},
     Arc, Mutex,
   },
 };
 
-use crate::runtime::{Sender, Receiver, channel, spawn};
+use crate::runtime::{Sender, Receiver, channel, spawn, AsyncRead, AsyncWrite,
+AsyncReadExt, BufWriter, BufReader};
 
 use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
@@ -17,7 +19,7 @@ type Queue = Arc<Mutex<Vec<(u64, Sender<Result<Value, Value>>)>>>;
 
 pub struct Requester<W>
 where
-  W: Write + Send + 'static,
+  W: AsyncWrite + Send + Unpin + 'static,
 {
   pub(crate) writer: Arc<Mutex<BufWriter<W>>>,
   pub(crate) queue: Queue,
@@ -26,7 +28,7 @@ where
 
 impl<W> Clone for Requester<W>
 where
-  W: Write + Send + 'static,
+  W: AsyncWrite + Send + Unpin + 'static,
 {
   fn clone(&self) -> Self {
     Requester {
@@ -39,16 +41,17 @@ where
 
 impl<W> Requester<W>
 where
-  W: Write + Send + 'static,
+  W: AsyncWrite + Send + Unpin + 'static,
 {
   pub fn new<H, R>(
     reader: R,
-    writer: <H as Handler>::Writer,
+    writer: H::Writer,
     handler: H,
   ) -> (Requester<<H as Handler>::Writer>, impl Future<Output = ()>)
   where
-    R: Read + Send + 'static,
+    R: AsyncRead + Send + Unpin + 'static,
     H: Handler + Send + 'static,
+    H::Writer: AsyncWrite + Send + Unpin + 'static,
   {
     let reader = BufReader::new(reader);
 
@@ -67,7 +70,7 @@ where
     (req, fut)
   }
 
-  fn send_msg(
+  async fn send_msg(
     &self,
     method: &str,
     args: Vec<Value>,
@@ -85,7 +88,7 @@ where
     self.queue.lock().unwrap().push((msgid, sender));
 
     let writer = &mut *self.writer.lock().unwrap();
-    model::encode(writer, req).expect("Error sending message");
+    model::encode(writer, req).await.expect("Error sending message");
 
     receiver
   }
@@ -95,7 +98,7 @@ where
     method: &str,
     args: Vec<Value>,
   ) -> Result<Value, Value> {
-    let mut receiver = self.send_msg(method, args);
+    let mut receiver = self.send_msg(method, args).await;
 
     receiver.recv().await.unwrap_or_else(|| {
       Err(Value::from(format!(
@@ -116,15 +119,19 @@ where
   async fn io_loop<H, R>(
     handler: H,
     mut reader: BufReader<R>,
-    req: Requester<<H as Handler>::Writer>,
+    req: Requester<H::Writer>,
   ) where
     H: Handler + Sync + 'static,
-    R: Read + Send + 'static,
+    R: AsyncRead + Send + Unpin + 'static,
+    H::Writer: AsyncWrite + Send + Unpin + 'static,
   {
     let handler = Arc::new(handler);
+    let mut v: Vec<u8> = vec![];
     loop {
       eprintln!("running loop");
-      let msg = match model::decode(&mut reader) {
+      reader.read_to_end(&mut v).await.unwrap();
+      let mut c = Cursor::new(v);
+      let msg = match model::decode(&mut c) {
         Ok(msg) => msg,
         Err(e) => {
           error!("Error while reading: {}", e);
@@ -132,6 +139,9 @@ where
           return;
         }
       };
+      let pos = c.position();
+      v = c.into_inner().split_off(pos.try_into().unwrap()); // TODO: more efficiency
+
       debug!("Get message {:?}", msg);
       match msg {
         model::RpcMessage::RpcRequest {
@@ -139,9 +149,11 @@ where
           method,
           params,
         } => {
+          eprintln!("Got req {}", method);
           let req = req.clone();
           let handler = handler.clone();
           spawn(async move {
+            eprintln!("Before handler");
             let req_t = req.clone();
             let response =
               match handler.handle_request(method, params, req_t).await {
@@ -161,8 +173,7 @@ where
               };
 
             let writer = &mut *(req.writer).lock().unwrap();
-            model::encode(writer, response)
-              .expect("Error sending RPC response");
+            model::encode(writer, response).await.expect("Error sending message");
           });
         }
         model::RpcMessage::RpcResponse {

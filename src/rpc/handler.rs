@@ -1,13 +1,14 @@
-use std::{io::Write, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 use async_trait::async_trait;
 use rmpv::Value;
 
 use crate::Requester;
+use crate::runtime::AsyncWrite;
 
 #[async_trait]
 pub trait Handler: Sync + Send {
-  type Writer: Write + Send + 'static;
+  type Writer: AsyncWrite + Send + Unpin + 'static;
 
   async fn handle_request(
     &self,
@@ -29,7 +30,7 @@ pub trait Handler: Sync + Send {
 
 pub struct DefaultHandler<Q>
 where
-  Q: Write + Send + Sync + 'static,
+  Q: AsyncWrite + Send + Sync + Unpin + 'static,
 {
   _q: Arc<PhantomData<Q>>,
 }
@@ -45,14 +46,14 @@ where
 
 impl<Q> Handler for DefaultHandler<Q>
 where
-  Q: Write + Send + Sync + 'static,
+  Q: AsyncWrite + Send + Sync + Unpin + 'static,
 {
   type Writer = Q;
 }
 
 impl<Q> DefaultHandler<Q>
 where
-  Q: Write + Send + Sync + 'static,
+  Q: AsyncWrite + Send + Sync + Unpin + 'static,
 {
   pub fn new() -> DefaultHandler<Q> {
     DefaultHandler {

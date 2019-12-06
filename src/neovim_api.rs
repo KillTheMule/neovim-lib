@@ -1,5 +1,5 @@
 // Auto generated 2019-11-30 22:14:46.771419
-use std::io::Write;
+use crate::runtime::AsyncWrite;
 
 use crate::{
   callerror::{map_generic_error, CallError},
@@ -32,7 +32,7 @@ impl Buffer {
     neovim: &Neovim<W>,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+    W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_line_count", call_args![self.code_data.clone()])
@@ -48,7 +48,7 @@ impl Buffer {
     opts: Vec<(Value, Value)>,
   ) -> Result<bool, CallError>
   where
-    W: Write + Send + 'static,
+    W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -62,7 +62,7 @@ impl Buffer {
   /// since: 4
   pub async fn detach<W>(&self, neovim: &Neovim<W>) -> Result<bool, CallError>
   where
-    W: Write + Send + 'static,
+    W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_detach", call_args![self.code_data.clone()])
@@ -79,7 +79,7 @@ impl Buffer {
     strict_indexing: bool,
   ) -> Result<Vec<String>, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -100,7 +100,7 @@ impl Buffer {
     replacement: Vec<String>,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -124,7 +124,7 @@ impl Buffer {
     index: i64,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -142,7 +142,7 @@ impl Buffer {
     name: &str,
   ) -> Result<Value, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_get_var", call_args![self.code_data.clone(), name])
@@ -156,7 +156,7 @@ impl Buffer {
     neovim: &Neovim<W>,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -174,7 +174,7 @@ impl Buffer {
     mode: &str,
   ) -> Result<Vec<Vec<(Value, Value)>>, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -195,7 +195,7 @@ impl Buffer {
     opts: Vec<(Value, Value)>,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -214,7 +214,7 @@ impl Buffer {
     lhs: &str,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -232,7 +232,7 @@ impl Buffer {
     opts: Vec<(Value, Value)>,
   ) -> Result<Vec<(Value, Value)>, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -251,7 +251,7 @@ impl Buffer {
     value: Value,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -269,7 +269,7 @@ impl Buffer {
     name: &str,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_del_var", call_args![self.code_data.clone(), name])
@@ -284,7 +284,7 @@ impl Buffer {
     name: &str,
   ) -> Result<Value, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -303,7 +303,7 @@ impl Buffer {
     value: Value,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -320,7 +320,7 @@ impl Buffer {
     neovim: &Neovim<W>,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_get_number", call_args![self.code_data.clone()])
@@ -334,7 +334,7 @@ impl Buffer {
     neovim: &Neovim<W>,
   ) -> Result<String, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_get_name", call_args![self.code_data.clone()])
@@ -349,7 +349,7 @@ impl Buffer {
     name: &str,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -366,7 +366,7 @@ impl Buffer {
     neovim: &Neovim<W>,
   ) -> Result<bool, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_is_loaded", call_args![self.code_data.clone()])
@@ -377,7 +377,7 @@ impl Buffer {
   /// since: 1
   pub async fn is_valid<W>(&self, neovim: &Neovim<W>) -> Result<bool, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_buf_is_valid", call_args![self.code_data.clone()])
@@ -392,7 +392,7 @@ impl Buffer {
     name: &str,
   ) -> Result<(i64, i64), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -414,7 +414,7 @@ impl Buffer {
     col_end: i64,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -441,7 +441,7 @@ impl Buffer {
     line_end: i64,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -461,7 +461,7 @@ impl Buffer {
     line_end: i64,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -482,7 +482,7 @@ impl Buffer {
     opts: Vec<(Value, Value)>,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -516,7 +516,7 @@ impl Window {
     neovim: &Neovim<W>,
   ) -> Result<Buffer, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_buf", call_args![self.code_data.clone()])
@@ -531,7 +531,7 @@ impl Window {
     buffer: &Buffer,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -548,7 +548,7 @@ impl Window {
     neovim: &Neovim<W>,
   ) -> Result<(i64, i64), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_cursor", call_args![self.code_data.clone()])
@@ -563,7 +563,7 @@ impl Window {
     pos: (i64, i64),
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -580,7 +580,7 @@ impl Window {
     neovim: &Neovim<W>,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_height", call_args![self.code_data.clone()])
@@ -595,7 +595,7 @@ impl Window {
     height: i64,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -609,7 +609,7 @@ impl Window {
   /// since: 1
   pub async fn get_width<W>(&self, neovim: &Neovim<W>) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_width", call_args![self.code_data.clone()])
@@ -624,7 +624,7 @@ impl Window {
     width: i64,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -642,7 +642,7 @@ impl Window {
     name: &str,
   ) -> Result<Value, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_var", call_args![self.code_data.clone(), name])
@@ -658,7 +658,7 @@ impl Window {
     value: Value,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -676,7 +676,7 @@ impl Window {
     name: &str,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_del_var", call_args![self.code_data.clone(), name])
@@ -691,7 +691,7 @@ impl Window {
     name: &str,
   ) -> Result<Value, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -710,7 +710,7 @@ impl Window {
     value: Value,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -727,7 +727,7 @@ impl Window {
     neovim: &Neovim<W>,
   ) -> Result<(i64, i64), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_position", call_args![self.code_data.clone()])
@@ -741,7 +741,7 @@ impl Window {
     neovim: &Neovim<W>,
   ) -> Result<Tabpage, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_tabpage", call_args![self.code_data.clone()])
@@ -755,7 +755,7 @@ impl Window {
     neovim: &Neovim<W>,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_number", call_args![self.code_data.clone()])
@@ -766,7 +766,7 @@ impl Window {
   /// since: 1
   pub async fn is_valid<W>(&self, neovim: &Neovim<W>) -> Result<bool, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_is_valid", call_args![self.code_data.clone()])
@@ -781,7 +781,7 @@ impl Window {
     config: Vec<(Value, Value)>,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -798,7 +798,7 @@ impl Window {
     neovim: &Neovim<W>,
   ) -> Result<Vec<(Value, Value)>, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_get_config", call_args![self.code_data.clone()])
@@ -813,7 +813,7 @@ impl Window {
     force: bool,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_win_close", call_args![self.code_data.clone(), force])
@@ -844,7 +844,7 @@ impl Tabpage {
     neovim: &Neovim<W>,
   ) -> Result<Vec<Window>, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_tabpage_list_wins", call_args![self.code_data.clone()])
@@ -859,7 +859,7 @@ impl Tabpage {
     name: &str,
   ) -> Result<Value, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -878,7 +878,7 @@ impl Tabpage {
     value: Value,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -896,7 +896,7 @@ impl Tabpage {
     name: &str,
   ) -> Result<(), CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -913,7 +913,7 @@ impl Tabpage {
     neovim: &Neovim<W>,
   ) -> Result<Window, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_tabpage_get_win", call_args![self.code_data.clone()])
@@ -927,7 +927,7 @@ impl Tabpage {
     neovim: &Neovim<W>,
   ) -> Result<i64, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call(
@@ -941,7 +941,7 @@ impl Tabpage {
   /// since: 1
   pub async fn is_valid<W>(&self, neovim: &Neovim<W>) -> Result<bool, CallError>
   where
-    W: Write + Send + 'static,
+        W: AsyncWrite + Send + Unpin + 'static,
   {
     neovim
       .call("nvim_tabpage_is_valid", call_args![self.code_data.clone()])
@@ -987,7 +987,7 @@ impl<'a> IntoVal<Value> for &'a Tabpage {
 
 impl<W> Requester<W>
 where
-  W: Write + Send + 'static,
+      W: AsyncWrite + Send + Unpin + 'static,
 {
   pub async fn ui_detach(&self) -> Result<(), CallError> {
     self
@@ -1645,7 +1645,7 @@ where
 
 impl<W> Neovim<W>
 where
-  W: Write + Send + 'static,
+      W: AsyncWrite + Send + Unpin + 'static,
 {
   pub async fn ui_detach(&self) -> Result<(), CallError> {
     self

@@ -2,8 +2,9 @@ use rmpv::{decode::read_value, encode::write_value, Value};
 use std::{
   error::Error,
   io,
-  io::{Read, Write},
+  io::Read,
 };
+use crate::runtime::{AsyncWrite, AsyncWriteExt, BufWriter};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum RpcMessage {
@@ -104,10 +105,11 @@ pub fn decode<R: Read>(reader: &mut R) -> Result<RpcMessage, Box<dyn Error>> {
   }
 }
 
-pub fn encode<W: Write>(
-  writer: &mut W,
+pub async fn encode<W: AsyncWrite + Send + Unpin + 'static>(
+  writer: &mut BufWriter<W>,
   msg: RpcMessage,
 ) -> Result<(), Box<dyn Error>> {
+  let mut v: Vec<u8> = vec![];
   match msg {
     RpcMessage::RpcRequest {
       msgid,
@@ -115,7 +117,7 @@ pub fn encode<W: Write>(
       params,
     } => {
       let val = rpc_args!(0, msgid, method, params);
-      write_value(writer, &val)?;
+      write_value(&mut v, &val)?;
     }
     RpcMessage::RpcResponse {
       msgid,
@@ -123,15 +125,16 @@ pub fn encode<W: Write>(
       result,
     } => {
       let val = rpc_args!(1, msgid, error, result);
-      write_value(writer, &val)?;
+      write_value(&mut v, &val)?;
     }
     RpcMessage::RpcNotification { method, params } => {
       let val = rpc_args!(2, method, params);
-      write_value(writer, &val)?;
+      write_value(&mut v, &val)?;
     }
   };
 
-  writer.flush()?;
+  writer.write_all(&v).await?;
+  writer.flush().await?;
 
   Ok(())
 }

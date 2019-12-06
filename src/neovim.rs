@@ -1,4 +1,4 @@
-use std::{clone::Clone, io::Write, process::Child, result};
+use std::{clone::Clone, result};
 
 use crate::{
   callerror::{map_generic_error, CallError},
@@ -8,10 +8,12 @@ use crate::{
 
 use rmpv::Value;
 
+use crate::runtime::{AsyncWrite, Child};
+
 /// An active Neovim session.
 pub enum Neovim<W>
 where
-  W: Write + Send + 'static,
+  W: AsyncWrite + Send + Unpin + 'static,
 {
   Child(Requester<W>, Child),
   Parent(Requester<W>),
@@ -36,7 +38,7 @@ macro_rules! call_args {
 
 impl<W> Neovim<W>
 where
-  W: Write + Send + 'static,
+  W: AsyncWrite + Send + Unpin + 'static,
 {
   pub fn requester(&self) -> Requester<W> {
     use Neovim::*;

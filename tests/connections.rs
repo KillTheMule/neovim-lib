@@ -5,6 +5,7 @@ extern crate rmp;
 use async_trait::async_trait;
 use neovim_lib::{create, Handler, Requester, runtime::spawn};
 use tokio::runtime::Runtime;
+use tokio;
 use rmpv::Value;
 
 const NVIMPATH: &str = "neovim/build/bin/nvim";
@@ -248,8 +249,8 @@ impl Handler for NH2 {
 }
 
 #[cfg(unix)]
-#[test]
-fn can_connect_to_child_2() {
+#[tokio::test]
+async fn can_connect_to_child_2() {
   let rs = r#"exe ":fun M(timer) 
       call rpcrequest(1, 'req', 'y') 
     endfun""#;
@@ -281,11 +282,10 @@ fn can_connect_to_child_2() {
   .unwrap();
 
   let nv = nvim.requester().clone();
-  let mut rt = Runtime::new().unwrap();
 
-  rt.spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
+  spawn(async move { nv.set_var("oogle", Value::from("doodle")).await });
 
-  rt.block_on(fut);
+  fut.await; 
 
   eprintln!("Quitting");
 }
