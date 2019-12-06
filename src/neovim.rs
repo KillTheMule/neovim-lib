@@ -6,7 +6,6 @@ use crate::{
   uioptions::UiAttachOptions,
 };
 
-use crate::runtime::block_on;
 use rmpv::Value;
 
 /// An active Neovim session.
@@ -78,16 +77,17 @@ where
   /// Register as a remote UI.
   ///
   /// After this method is called, the client will receive redraw notifications.
-  pub fn ui_attach(
+  pub async fn ui_attach(
     &mut self,
     width: i64,
     height: i64,
     opts: &UiAttachOptions,
   ) -> Result<(), CallError> {
-    block_on(self.call(
+    self.call(
       "nvim_ui_attach",
       call_args!(width, height, opts.to_value_map()),
-    ))
+    )
+    .await
     .map_err(map_generic_error)
     .map(|_| ())
   }
@@ -95,7 +95,7 @@ where
   /// Send a quit command to Nvim.
   /// The quit command is 'qa!' which will make Nvim quit without
   /// saving anything.
-  pub fn quit_no_save(&mut self) -> Result<(), CallError> {
-    block_on(self.requester().command("qa!"))
+  pub async fn quit_no_save(&mut self) -> Result<(), CallError> {
+    self.requester().command("qa!").await
   }
 }

@@ -8,7 +8,7 @@ use std::{
   },
 };
 
-use crate::runtime::{Sender, Receiver, channel, spawn, block_on};
+use crate::runtime::{Sender, Receiver, channel, spawn};
 
 use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
@@ -171,13 +171,13 @@ where
         } => {
           let sender = find_sender(&req.queue, msgid);
           if error != Value::Nil {
-            block_on(async move {
+            spawn(async move {
               sender.send(Err(error)).await;
-            });
+            }).await;
           } else {
-            block_on(async move {
+            spawn(async move {
               sender.send(Ok(result)).await;
-            });
+            }).await;
           }
         }
         model::RpcMessage::RpcNotification { method, params } => {

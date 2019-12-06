@@ -5,7 +5,7 @@
 //! ## Simple use case
 //! ```no_run
 //! use neovim_lib::{create, DefaultHandler};
-//! use neovim_lib::runtime::block_on;
+//! use async_std::task::block_on;
 //!
 //! let mut handler = DefaultHandler::new();
 //! let (nvim, _) = create::new_tcp("127.0.0.1:6666", handler).unwrap();
@@ -20,7 +20,8 @@
 //!
 //! ```no_run
 //! use neovim_lib::{create, Handler, Value, Requester};
-//! use neovim_lib::runtime::{block_on, Sender, channel};
+//! use neovim_lib::runtime::{Sender, channel};
+//! use async_std::task::block_on;
 //! use async_trait::async_trait;
 //! use std::net::TcpStream;
 //!
