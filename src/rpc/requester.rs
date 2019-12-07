@@ -1,6 +1,7 @@
 use std::{
   convert::TryInto,
   error::Error,
+  io::ErrorKind,
   future::Future,
   io::Cursor,
   sync::{
@@ -10,10 +11,11 @@ use std::{
 };
 
 use crate::runtime::{Sender, Receiver, channel, spawn, AsyncRead, AsyncWrite,
-AsyncReadExt, BufWriter, BufReader, Mutex};
+AsyncReadExt, BufWriter, Mutex};
 
 use crate::rpc::{handler::Handler, model};
 use rmpv::Value;
+use rmpv::decode::Error as RmpvError;
 
 type Queue = Arc<Mutex<Vec<(u64, Sender<Result<Value, Value>>)>>>;
 
@@ -53,8 +55,6 @@ where
     H: Handler + Send + 'static,
     H::Writer: AsyncWrite + Send + Unpin + 'static,
   {
-    let reader = BufReader::new(reader);
-
     let req = Requester {
       writer: Arc::new(Mutex::new(BufWriter::new(writer))),
       msgid_counter: Arc::new(AtomicU64::new(0)),
@@ -118,7 +118,7 @@ where
 
   async fn io_loop<H, R>(
     handler: H,
-    mut reader: BufReader<R>,
+    mut reader: R,
     req: Requester<H::Writer>,
   ) where
     H: Handler + Sync + 'static,
@@ -129,18 +129,51 @@ where
     let mut v: Vec<u8> = vec![];
     loop {
       eprintln!("running loop");
-      reader.read_to_end(&mut v).await.unwrap();
-      let mut c = Cursor::new(v);
-      let msg = match model::decode(&mut c) {
-        Ok(msg) => msg,
-        Err(e) => {
-          error!("Error while reading: {}", e);
-          req.send_error_to_callers(&req.queue, &e).await;
-          return;
+      let msg = {
+        v.clear();
+        let mut buf = [0u8;5];
+        let mut msg = None;
+
+        while let Ok(n) = reader.read(&mut buf).await {
+          eprintln!("got {} bytes", n);
+          v.extend_from_slice(&buf[..n]);
+          let mut c = Cursor::new(&v);
+          msg = match model::decode(&mut c) {
+            Ok(msg) => Some(msg),
+            Err(e) => {
+              eprintln!("{:?}",
+                e.downcast_ref::<RmpvError>());
+              if let Some(RmpvError::InvalidDataRead(ee)) = e.downcast_ref::<RmpvError>() {
+                if ee.kind() == ErrorKind::UnexpectedEof {
+                  eprintln!("Not enough data, reading again");
+                  continue;
+                } else {
+                  eprintln!("{:?}", e);
+                  eprintln!("1 - Error while reading: {}", e);
+                  error!("Error while reading: {}", e);
+                  req.send_error_to_callers(&req.queue, &e).await;
+                  return;
+                }
+              } else {
+                eprintln!("{:?}", e);
+                eprintln!("2 - Error while reading: {}", e);
+                error!("Error while reading: {}", e);
+                req.send_error_to_callers(&req.queue, &e).await;
+                return;
+              }
+            }
+          };
+          let pos = c.position();
+          v = v.split_off(pos.try_into().unwrap()); // TODO: more efficiency
+          break;
+        };
+        if let Some(m) = msg {
+          m
+        } else {
+          panic!();
         }
       };
-      let pos = c.position();
-      v = c.into_inner().split_off(pos.try_into().unwrap()); // TODO: more efficiency
+      eprintln!("Get message {:?}", msg);
 
       debug!("Get message {:?}", msg);
       match msg {
@@ -229,28 +262,28 @@ async fn find_sender(
 mod tests {
   use super::*;
 
-  #[test]
-  fn test_find_sender() {
+  #[tokio::test]
+  async fn test_find_sender() {
     let queue = Arc::new(Mutex::new(Vec::new()));
 
     {
       let (sender, _receiver) = channel(1);
-      queue.lock().unwrap().push((1, sender));
+      queue.lock().await.push((1, sender));
     }
     {
       let (sender, _receiver) = channel(1);
-      queue.lock().unwrap().push((2, sender));
+      queue.lock().await.push((2, sender));
     }
     {
       let (sender, _receiver) = channel(1);
-      queue.lock().unwrap().push((3, sender));
+      queue.lock().await.push((3, sender));
     }
 
-    find_sender(&queue, 1);
-    assert_eq!(2, queue.lock().unwrap().len());
-    find_sender(&queue, 2);
-    assert_eq!(1, queue.lock().unwrap().len());
-    find_sender(&queue, 3);
-    assert!(queue.lock().unwrap().is_empty());
+    find_sender(&queue, 1).await;
+    assert_eq!(2, queue.lock().await.len());
+    find_sender(&queue, 2).await;
+    assert_eq!(1, queue.lock().await.len());
+    find_sender(&queue, 3).await;
+    assert!(queue.lock().await.is_empty());
   }
 }

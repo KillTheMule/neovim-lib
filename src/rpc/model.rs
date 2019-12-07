@@ -275,21 +275,72 @@ impl IntoVal<Value> for Vec<(Value, Value)> {
 #[cfg(test)]
 mod test {
   use super::*;
-  use std::io::{Cursor, Seek, SeekFrom};
+  use std::sync::Arc;
+  use tokio::sync::Mutex;
+  use tokio::io::BufWriter;
+  use std::io::Cursor;
 
-  #[test]
-  fn request_test() {
+  #[tokio::test]
+  async fn request_test() {
     let msg = RpcMessage::RpcRequest {
       msgid: 1,
       method: "test_method".to_owned(),
       params: vec![],
     };
 
-    let mut buff = Cursor::new(vec![]);
-    encode(&mut buff, msg.clone()).unwrap();
 
-    buff.seek(SeekFrom::Start(0)).unwrap();
-    let msg_dest = decode(&mut buff).unwrap();
+    let buff:Vec<u8> = vec![];
+    let tmp = Arc::new(Mutex::new(BufWriter::new(buff)));
+    let tmp2 = tmp.clone();
+    let msg2 = msg.clone();
+
+    encode(tmp2, msg2).await.unwrap();
+
+    let msg_dest = {
+      let v = &mut *tmp.lock().await;
+      let x = v.get_mut();
+      decode(&mut x.as_slice()).unwrap()
+    };
+
     assert_eq!(msg, msg_dest);
+  }
+
+  #[tokio::test]
+  async fn request_test_twice() {
+    let msg = RpcMessage::RpcRequest {
+      msgid: 1,
+      method: "test_method".to_owned(),
+      params: vec![],
+    };
+
+    let msg2 = RpcMessage::RpcRequest {
+      msgid: 2,
+      method: "test_method_2".to_owned(),
+      params: vec![],
+    };
+
+
+    let buff:Vec<u8> = vec![];
+    let tmp = Arc::new(Mutex::new(BufWriter::new(buff)));
+    let tmp_c = tmp.clone();
+    let msg_c = msg.clone();
+    let msg2_c = msg2.clone();
+
+    encode(tmp_c, msg_c).await.unwrap();
+    let tmp_c = tmp.clone();
+    encode(tmp_c, msg2_c).await.unwrap();
+    let len = (*tmp).lock().await.get_ref().len();
+    assert_eq!(34, len); // Note: msg2 is 2 longer than msg
+
+    let v = &mut *tmp.lock().await;
+    let x = v.get_mut();
+    let mut cursor = Cursor::new(x.as_slice());
+    let msg_dest = decode(&mut cursor).unwrap();
+
+    assert_eq!(msg, msg_dest);
+    assert_eq!(16, cursor.position());
+
+    let msg_dest_2 = decode(&mut cursor).unwrap();
+    assert_eq!(msg2, msg_dest_2);
   }
 }

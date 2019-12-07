@@ -10,8 +10,9 @@ use rmpv::Value;
 const NVIMPATH: &str = "neovim/build/bin/nvim";
 
 #[cfg(unix)]
-use std::process::Command;
-use std::process::{self, ChildStdin};
+use neovim_lib::runtime::Command;
+use neovim_lib::runtime::{ChildStdin};
+use std::process::exit as std_exit;
 
 /*
 struct NH {
@@ -239,7 +240,7 @@ impl Handler for NH2 {
     match name.as_ref() {
       "not" => eprintln!("Not: {}", args[0].as_str().unwrap()),
       "quit" => {
-        process::exit(0);
+        std_exit(0);
       }
       _ => {}
     };
