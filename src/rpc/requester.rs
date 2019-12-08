@@ -108,7 +108,8 @@ where
     })
   }
 
-  async fn send_error_to_callers(&self, queue: &Queue, err: &Box<dyn Error>) {
+  async fn send_error_to_callers(&self, queue: &Queue, err: &Box<dyn Error +
+    Sync + Send>) {
     let mut queue = queue.lock().await;
     queue.drain(0..).for_each(|mut sender| {
       let e = format!("Error read response: {}", err);
@@ -128,52 +129,40 @@ where
     let handler = Arc::new(handler);
     let mut v: Vec<u8> = vec![];
     loop {
-      eprintln!("running loop");
       let msg = {
         v.clear();
-        let mut buf = [0u8;5];
+        let mut buf = [0u8;80 * 1024];
         let mut msg = None;
 
         while let Ok(n) = reader.read(&mut buf).await {
-          eprintln!("got {} bytes", n);
           v.extend_from_slice(&buf[..n]);
           let mut c = Cursor::new(&v);
           msg = match model::decode(&mut c) {
             Ok(msg) => Some(msg),
             Err(e) => {
-              eprintln!("{:?}",
-                e.downcast_ref::<RmpvError>());
-              if let Some(RmpvError::InvalidDataRead(ee)) = e.downcast_ref::<RmpvError>() {
+              let e_rmpv = e.downcast_ref::<RmpvError>();
+              if let Some(RmpvError::InvalidDataRead(ee)) = e_rmpv  {
                 if ee.kind() == ErrorKind::UnexpectedEof {
-                  eprintln!("Not enough data, reading again");
+                  debug!("Not enough data, reading more!");
                   continue;
-                } else {
-                  eprintln!("{:?}", e);
-                  eprintln!("1 - Error while reading: {}", e);
-                  error!("Error while reading: {}", e);
-                  req.send_error_to_callers(&req.queue, &e).await;
-                  return;
                 }
-              } else {
-                eprintln!("{:?}", e);
-                eprintln!("2 - Error while reading: {}", e);
-                error!("Error while reading: {}", e);
-                req.send_error_to_callers(&req.queue, &e).await;
-                return;
+              } else if let Some(RmpvError::InvalidMarkerRead(ee)) = e_rmpv  {
+                if ee.kind() == ErrorKind::UnexpectedEof {
+                  debug!("Not enough data, reading more!");
+                  continue;
+                }
               }
+              error!("Error while reading: {}", e);
+              req.send_error_to_callers(&req.queue, &e).await;
+              return;
             }
           };
           let pos = c.position();
           v = v.split_off(pos.try_into().unwrap()); // TODO: more efficiency
           break;
         };
-        if let Some(m) = msg {
-          m
-        } else {
-          panic!();
-        }
+        msg.unwrap()
       };
-      eprintln!("Get message {:?}", msg);
 
       debug!("Get message {:?}", msg);
       match msg {
@@ -182,11 +171,9 @@ where
           method,
           params,
         } => {
-          eprintln!("Got req {}", method);
           let req = req.clone();
           let handler = handler.clone();
           spawn(async move {
-            eprintln!("Before handler");
             let req_t = req.clone();
             let response =
               match handler.handle_request(method, params, req_t).await {
@@ -205,15 +192,8 @@ where
                 },
               };
 
-            //let writer = req.writer.clone();// &mut *(req.writer).lock().unwrap();
             let w = req.writer;
             model::encode(w, response).await.unwrap();//.expect("Error sending message");
-            /*
-            let fut = async move {
-              model::encode(req.writer, response).await;//.expect("Error sending message");
-            };
-            fut.await; 
-            */
           });
         }
         model::RpcMessage::RpcResponse {

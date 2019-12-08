@@ -279,6 +279,7 @@ async fn can_connect_to_child_2() {
       .env("NVIM_LOG_FILE", "nvimlog"),
     handler,
   )
+  .await
   .unwrap();
 
   let nv = nvim.requester().clone();

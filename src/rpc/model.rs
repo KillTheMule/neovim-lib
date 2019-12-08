@@ -68,7 +68,7 @@ macro_rules! rpc_args {
     }}
 }
 
-pub fn decode<R: Read>(reader: &mut R) -> std::result::Result<RpcMessage, Box<dyn Error>> {
+pub fn decode<R: Read>(reader: &mut R) -> std::result::Result<RpcMessage, Box<dyn Error + Sync + Send>> {
   let mut arr = try_arr!(read_value(reader)?, "Rpc message must be array");
   match try_int!(arr[0], "Can't find message type") {
     0 => {

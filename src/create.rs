@@ -47,34 +47,34 @@ where
 }
 
 /// Connect to a Neovim instance by spawning a new one.
-pub fn new_child<H>(
+pub async fn new_child<H>(
   handler: H,
 ) -> io::Result<(Neovim<ChildStdin>, impl Future<Output = ()>)>
 where
   H: Handler<Writer = ChildStdin> + Send + 'static,
 {
   if cfg!(target_os = "windows") {
-    new_child_path("nvim.exe", handler)
+    new_child_path("nvim.exe", handler).await
   } else {
-    new_child_path("nvim", handler)
+    new_child_path("nvim", handler).await
   }
 }
 
 /// Connect to a Neovim instance by spawning a new one
-pub fn new_child_path<H, S: AsRef<Path>>(
+pub async fn new_child_path<H, S: AsRef<Path>>(
   program: S,
   handler: H,
 ) -> io::Result<(Neovim<ChildStdin>, impl Future<Output = ()>)>
 where
   H: Handler<Writer = ChildStdin> + Send + 'static,
 {
-  new_child_cmd(Command::new(program.as_ref()).arg("--embed"), handler)
+  new_child_cmd(Command::new(program.as_ref()).arg("--embed"), handler).await
 }
 
 /// Connect to a Neovim instance by spawning a new one
 ///
 /// stdin/stdout settings will be rewrited to `Stdio::piped()`
-pub fn new_child_cmd<H>(
+pub async fn new_child_cmd<H>(
   cmd: &mut Command,
   handler: H,
 ) -> io::Result<(Neovim<ChildStdin>, impl Future<Output = ()>)>
